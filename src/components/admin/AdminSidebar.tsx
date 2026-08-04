@@ -36,7 +36,7 @@ export function AdminSidebar() {
         <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
           Admin
         </p>
-        <p className="font-bold text-brand-700">BlueHub</p>
+        <p className="font-bold text-dps-navy">DPS Admin</p>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
@@ -51,8 +51,8 @@ export function AdminSidebar() {
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-dps-cyan/10 text-dps-cyan"
+                  : "text-slate-600 hover:bg-slate-50"
               )}
             >
               <item.icon className="h-4 w-4" />

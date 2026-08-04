@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
-import { Calendar as CalendarIcon, MapPin, Filter } from "lucide-react";
-import { Card, Badge, Button } from "@/components/ui/Card";
+import { Calendar as CalendarIcon, Filter, MapPin } from "lucide-react";
+import { Card, Badge, Button, SectionHeader } from "@/components/ui/Card";
 import type { EventStatus, SwimEvent } from "@/lib/types";
 
 const statusLabels: Record<EventStatus, string> = {
@@ -26,17 +26,12 @@ export function CalendarClient({ initialEvents }: { initialEvents: SwimEvent[] }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          ปฏิทิน<span className="text-gradient">การแข่งขัน</span>
-        </h1>
-        <p className="mt-2 text-gray-500">ติดตามการแข่งขันว่ายน้ำทั้งหมด</p>
-      </div>
+      <SectionHeader eyebrow="EVENTS" title="ปฏิทินการแข่งขัน" className="mb-8" />
 
       <Card className="mb-6">
         <div className="flex flex-wrap items-center gap-3">
-          <Filter className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-600">สถานะ:</span>
+          <Filter className="h-4 w-4 text-slate-400" />
+          <span className="text-sm font-medium text-slate-600">สถานะ:</span>
           {(["all", "upcoming", "live", "completed"] as const).map((s) => (
             <Button
               key={s}
@@ -52,15 +47,12 @@ export function CalendarClient({ initialEvents }: { initialEvents: SwimEvent[] }
 
       <div className="space-y-4">
         {filteredEvents.length === 0 ? (
-          <Card className="py-12 text-center text-gray-500">ไม่พบการแข่งขัน</Card>
+          <Card className="py-12 text-center text-slate-500">ไม่พบการแข่งขัน</Card>
         ) : (
           filteredEvents.map((event) => (
-            <Card
-              key={event.id}
-              className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-            >
+            <Card key={event.id} variant="muted" className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex gap-4">
-                <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-dps-cyan/20 text-dps-navy">
                   <span className="text-xs font-medium">
                     {format(parseISO(event.dateStart), "MMM", { locale: th })}
                   </span>
@@ -70,11 +62,11 @@ export function CalendarClient({ initialEvents }: { initialEvents: SwimEvent[] }
                 </div>
                 <div>
                   <Badge variant={event.status}>{statusLabels[event.status]}</Badge>
-                  <h3 className="mt-1 font-semibold text-gray-900">{event.name}</h3>
+                  <h3 className="mt-1 font-semibold text-slate-800">{event.name}</h3>
                   {event.description && (
-                    <p className="mt-1 text-sm text-gray-500">{event.description}</p>
+                    <p className="mt-1 text-sm text-slate-500">{event.description}</p>
                   )}
-                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
                       <CalendarIcon className="h-3.5 w-3.5" />
                       {format(parseISO(event.dateStart), "d MMM", { locale: th })}

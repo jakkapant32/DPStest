@@ -9,29 +9,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a8a",
-        },
-        accent: {
-          400: "#a78bfa",
-          500: "#8b5cf6",
-          600: "#7c3aed",
+        dps: {
+          navy: "#0A192F",
+          blue: "#1E3A8A",
+          cyan: "#06B6D4",
+          dark: "#020617",
         },
       },
       fontFamily: {
-        sans: ["var(--font-sarabun)", "system-ui", "sans-serif"],
+        sans: ["var(--font-kanit)", "system-ui", "sans-serif"],
+        bebas: ['var(--font-bebas)', "sans-serif"],
+        montserrat: ['var(--font-montserrat)', "sans-serif"],
       },
       boxShadow: {
-        card: "0 4px 24px -4px rgba(37, 99, 235, 0.08)",
+        card: "0 4px 24px -4px rgba(6, 182, 212, 0.12)",
+        cyan: "0 10px 30px -5px rgba(6, 182, 212, 0.3)",
       },
     },
   },

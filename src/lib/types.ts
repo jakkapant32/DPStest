@@ -1,13 +1,14 @@
 export const siteConfig = {
-  name: "BlueHub",
-  tagline: "United by Water",
+  name: "DPS",
+  fullName: "Distance Per Stroke",
+  tagline: "Distance Per Stroke",
   description:
-    "แพลตฟอร์มว่ายน้ำครบวงจร — ปฏิทินการแข่งขัน ผลการแข่งขัน วิเคราะห์ข้อมูล และร้านค้า",
+    "DPS ผู้เชี่ยวชาญด้านกีฬาว่ายน้ำแบบครบวงจร — จัดการแข่งขัน วิเคราะห์ข้อมูล และสปอร์ตแฟชั่น",
   nav: [
     { href: "/calendar", label: "ปฏิทินการแข่งขัน", labelEn: "Calendar" },
     { href: "/results", label: "ผลการแข่งขัน", labelEn: "Results" },
     { href: "/analytics", label: "วิเคราะห์ข้อมูล", labelEn: "Data Analytics" },
-    { href: "/shop", label: "ร้านค้า", labelEn: "Shop" },
+    { href: "/shop", label: "สปอร์ตแฟชั่น", labelEn: "Store" },
     { href: "/about", label: "เกี่ยวกับเรา", labelEn: "About Us" },
   ],
 };

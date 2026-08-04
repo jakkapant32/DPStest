@@ -1,5 +1,5 @@
-import { Card } from "@/components/ui/Card";
-import { Waves, Target, Heart, Users } from "lucide-react";
+import { Activity, Heart, Target, Users } from "lucide-react";
+import { Card, SectionHeader } from "@/components/ui/Card";
 
 export const metadata = {
   title: "เกี่ยวกับเรา",
@@ -22,8 +22,8 @@ const values = [
     desc: "เชื่อมโยงสโมสร โค้ช นักกีฬา และแฟนกีฬา",
   },
   {
-    icon: Waves,
-    title: "United by Water",
+    icon: Activity,
+    title: "Distance Per Stroke",
     desc: "โลกที่เชื่อมด้วยน้ำ เพื่อสุขภาพ ชีวิต และกีฬา",
   },
 ];
@@ -31,38 +31,34 @@ const values = [
 export default function AboutPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl text-center">
-        <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-          เกี่ยวกับ <span className="text-gradient">BlueHub</span>
-        </h1>
-        <p className="mt-4 text-lg text-gray-500">
-          แพลตฟอร์มว่ายน้ำที่รวมปฏิทินการแข่งขัน ผลการแข่งขัน
-          การวิเคราะห์ข้อมูล และร้านค้าไว้ในที่เดียว
-        </p>
-      </div>
+      <SectionHeader
+        eyebrow="ABOUT US"
+        title="เกี่ยวกับ DPS"
+        className="mb-12"
+      />
 
-      <Card className="mx-auto mt-12 max-w-4xl">
-        <h2 className="text-xl font-bold text-gray-900">วิสัยทัศน์</h2>
-        <p className="mt-3 text-gray-600 leading-relaxed">
-          BlueHub มุ่งเป็นแพลตฟอร์มว่ายน้ำชั้นนำในภูมิภาค
+      <Card className="mx-auto max-w-4xl">
+        <h2 className="text-xl font-bold text-dps-navy">วิสัยทัศน์</h2>
+        <p className="mt-3 leading-relaxed text-slate-600">
+          DPS (Distance Per Stroke) มุ่งเป็นแพลตฟอร์มว่ายน้ำชั้นนำในภูมิภาค
           ที่ช่วยให้นักกีฬา โค้ช และสโมสรเข้าถึงข้อมูลการแข่งขัน
-          และเครื่องมือวิเคราะห์ที่ทรงพลัง — ด้วย UX ที่สนุก สดใส และใช้งานง่าย
+          และเครื่องมือวิเคราะห์ที่ทรงพลัง
         </p>
-        <p className="mt-4 text-gray-600 leading-relaxed">
+        <p className="mt-4 leading-relaxed text-slate-600">
           เราเชื่อว่าข้อมูลคือกุญแจสู่การพัฒนาผลงาน
-          จึงออกแบบ Swimming Dual Analytics ให้เปรียบเทียบ pacing
+          จึงออกแบบ Analytics ให้เปรียบเทียบ pacing
           ระหว่างนักกีฬาและการแข่งขันได้อย่างชัดเจน
         </p>
       </Card>
 
       <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {values.map((v) => (
-          <Card key={v.title} className="text-center">
-            <div className="mx-auto mb-4 inline-flex rounded-xl bg-brand-50 p-3 text-brand-600">
+          <Card key={v.title} variant="muted" className="text-center">
+            <div className="mx-auto mb-4 inline-flex rounded-xl bg-white p-3 text-dps-cyan shadow-sm">
               <v.icon className="h-6 w-6" />
             </div>
-            <h3 className="font-semibold text-gray-900">{v.title}</h3>
-            <p className="mt-2 text-sm text-gray-500">{v.desc}</p>
+            <h3 className="font-semibold text-slate-800">{v.title}</h3>
+            <p className="mt-2 text-sm text-slate-500">{v.desc}</p>
           </Card>
         ))}
       </div>
@@ -74,19 +70,19 @@ export default function AboutPage() {
               1
             </span>
             <div>
-              <p className="font-medium text-gray-900">Phase 1 — Core Platform</p>
-              <p className="text-sm text-gray-500">
-                Calendar, Results, Data Analytics, Shop, About Us
+              <p className="font-medium text-slate-800">Phase 1 — Core Platform</p>
+              <p className="text-sm text-slate-500">
+                Calendar, Results, Data Analytics, Store, About Us
               </p>
             </div>
           </div>
           <div className="flex gap-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dps-cyan/20 text-sm font-bold text-dps-navy">
               2
             </span>
             <div>
-              <p className="font-medium text-gray-900">Phase 2 — Video Analysis</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-slate-800">Phase 2 — Video Analysis</p>
+              <p className="text-sm text-slate-500">
                 อัพโหลดคลิปว่ายน้ำ → วิเคราะห์ stroke และ pacing อัตโนมัติ
               </p>
             </div>

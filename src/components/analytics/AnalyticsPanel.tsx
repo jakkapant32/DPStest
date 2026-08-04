@@ -159,7 +159,7 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                     type="checkbox"
                     checked={ageGroups.includes(ag)}
                     onChange={() => toggleItem(ageGroups, setAgeGroups, ag)}
-                    className="rounded border-gray-300 text-brand-600"
+                    className="rounded border-slate-300 text-dps-cyan"
                   />
                   {ag}
                 </label>
@@ -177,7 +177,7 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                     type="checkbox"
                     checked={clubs.includes(club)}
                     onChange={() => toggleItem(clubs, setClubs, club)}
-                    className="rounded border-gray-300 text-brand-600"
+                    className="rounded border-slate-300 text-dps-cyan"
                   />
                   <span className="truncate">{club}</span>
                 </label>
@@ -195,7 +195,7 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                   name={`chart-${side}`}
                   checked={chartMode === mode}
                   onChange={() => setChartMode(mode)}
-                  className="text-brand-600"
+                  className="text-dps-cyan"
                 />
                 {mode === "pacing" ? "Pacing" : "Cumulative"}
               </label>
@@ -223,7 +223,7 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                         toggleItem(selectedAthletes, setSelectedAthletes, athlete);
                       }
                     }}
-                    className="rounded border-gray-300 text-brand-600"
+                    className="rounded border-slate-300 text-dps-cyan"
                   />
                   <span className="truncate">{athlete}</span>
                 </label>
@@ -272,7 +272,7 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
               </div>
             </div>
             <div>
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-brand-200 bg-brand-50/50 px-4 py-3 text-sm text-brand-700 hover:bg-brand-50">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-dps-cyan/30 bg-dps-cyan/5 px-4 py-3 text-sm text-dps-navy hover:bg-dps-cyan/10">
                 <Upload className="h-4 w-4" />
                 เลือกไฟล์ CSV
                 <input

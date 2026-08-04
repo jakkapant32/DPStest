@@ -127,7 +127,7 @@ export const mockResults: RaceResult[] = [
 export const mockProducts: Product[] = [
   {
     id: "p1",
-    name: "ชุดว่ายน้ำ BlueHub Pro",
+    name: "ชุดว่ายน้ำ DPS Pro",
     description: "ชุดว่ายน้ำแข่งขัน เนื้อผ้า chlorine-resistant",
     price: 1290,
     image: "https://images.unsplash.com/photo-1530549387789-4c1017266635?w=400&h=400&fit=crop",
@@ -137,7 +137,7 @@ export const mockProducts: Product[] = [
   {
     id: "p2",
     name: "หมวกว่ายน้ำ Silicone",
-    description: "หมวกซิลิโคน สีน้ำเงิน BlueHub",
+    description: "หมวกซิลิโคน สีน้ำเงิน DPS",
     price: 350,
     image: "https://images.unsplash.com/photo-1571902943202-507ec2618ae8?w=400&h=400&fit=crop",
     category: "อุปกรณ์",
@@ -154,8 +154,8 @@ export const mockProducts: Product[] = [
   },
   {
     id: "p4",
-    name: "เสื้อ BlueHub United by Water",
-    description: "เสื้อ cotton สกรีนโลโก้ BlueHub",
+    name: "เสื้อ DPS Official",
+    description: "เสื้อ cotton สกรีนโลโก้ DPS",
     price: 450,
     image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop",
     category: "Merchandise",

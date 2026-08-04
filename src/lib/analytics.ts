@@ -112,12 +112,12 @@ export function computeStats(records: SwimRecord[]) {
 }
 
 export const CHART_COLORS = [
-  "#2563eb",
-  "#f97316",
+  "#06B6D4",
+  "#1E3A8A",
+  "#0A192F",
   "#22c55e",
-  "#ef4444",
+  "#f97316",
   "#8b5cf6",
-  "#06b6d4",
   "#eab308",
   "#ec4899",
 ];

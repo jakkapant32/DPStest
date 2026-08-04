@@ -1,78 +1,101 @@
 "use client";
 
 import Image from "next/image";
-import { ShoppingCart, MessageCircle } from "lucide-react";
-import { Card, Badge, Button } from "@/components/ui/Card";
+import Link from "next/link";
+import { ArrowRight, MessageCircle, ShoppingCart } from "lucide-react";
+import { Badge, Button } from "@/components/ui/Card";
 import type { Product } from "@/lib/types";
 import { useState } from "react";
 
 export function ShopClient({ initialProducts }: { initialProducts: Product[] }) {
   const [cart, setCart] = useState<string[]>([]);
 
-  const addToCart = (id: string) => {
-    setCart((prev) => [...prev, id]);
-  };
-
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            ร้าน<span className="text-gradient">ค้า</span>
-          </h1>
-          <p className="mt-2 text-gray-500">อุปกรณ์ว่ายน้ำและ merchandise จาก BlueHub</p>
+    <div className="bg-dps-dark min-h-screen text-white">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mb-12 flex flex-col items-end justify-between md:flex-row">
+          <div>
+            <h2 className="font-bebas mb-2 text-2xl tracking-widest text-dps-cyan">
+              MERCHANDISE
+            </h2>
+            <h1 className="text-3xl font-bold md:text-5xl">
+              DPS OFFICIAL <span className="font-bebas tracking-wider">STORE</span>
+            </h1>
+            <p className="mt-2 text-slate-400">
+              สินค้าที่ระลึกและสปอร์ตแฟชั่น สำหรับคนรักกีฬาว่ายน้ำ
+            </p>
+          </div>
+          {cart.length > 0 && (
+            <Badge>
+              <ShoppingCart className="mr-1 h-3 w-3" />
+              {cart.length} รายการ
+            </Badge>
+          )}
         </div>
-        {cart.length > 0 && (
-          <Badge>
-            <ShoppingCart className="mr-1 h-3 w-3" />
-            {cart.length} รายการ
-          </Badge>
-        )}
-      </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {initialProducts.map((product) => (
-          <Card key={product.id} className="flex flex-col overflow-hidden p-0">
-            <div className="relative aspect-square bg-gray-100">
-              <Image
-                src={product.image}
-                alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 50vw, 25vw"
-              />
-              {!product.inStock && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <span className="rounded-full bg-white px-3 py-1 text-sm font-medium">สินค้าหมด</span>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {initialProducts.map((product) => (
+            <div
+              key={product.id}
+              className="group overflow-hidden rounded-2xl bg-slate-800 transition-all hover:ring-1 hover:ring-dps-cyan/50"
+            >
+              <div className="relative flex h-64 items-center justify-center overflow-hidden bg-slate-700 p-8">
+                <Image
+                  src={product.image}
+                  alt={product.name}
+                  fill
+                  className="object-cover opacity-80 transition-opacity group-hover:opacity-100"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                />
+                {!product.inStock && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                    <span className="rounded-full bg-dps-cyan px-3 py-1 text-xs font-bold text-dps-navy">
+                      SOLD OUT
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="p-6">
+                <span className="text-xs font-bold uppercase tracking-wide text-dps-cyan">
+                  {product.category}
+                </span>
+                <h3 className="mt-1 text-lg font-bold transition-colors group-hover:text-dps-cyan">
+                  {product.name}
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">{product.description}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-xl font-bold">฿{product.price.toLocaleString()}</span>
+                  <button
+                    disabled={!product.inStock}
+                    onClick={() => setCart((prev) => [...prev, product.id])}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 transition-colors hover:bg-dps-cyan hover:text-dps-navy disabled:opacity-40"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="flex flex-1 flex-col p-4">
-              <Badge>{product.category}</Badge>
-              <h3 className="mt-2 font-semibold text-gray-900">{product.name}</h3>
-              <p className="mt-1 flex-1 text-sm text-gray-500">{product.description}</p>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-lg font-bold text-brand-700">฿{product.price.toLocaleString()}</span>
-                <Button size="sm" disabled={!product.inStock} onClick={() => addToCart(product.id)}>
-                  <ShoppingCart className="mr-1 h-3.5 w-3.5" />
-                  เพิ่ม
-                </Button>
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="mt-10 flex flex-col items-center gap-4 p-8 text-center sm:flex-row sm:text-left">
-        <MessageCircle className="h-10 w-10 shrink-0 text-brand-500" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-900">สั่งซื้อผ่าน Line</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Phase 1: ติดต่อสั่งซื้อผ่าน Line @bluehub — Payment online จะมาใน Phase 1.5
-          </p>
+          ))}
         </div>
-        <Button variant="secondary">Line: @bluehub</Button>
-      </Card>
+
+        <div className="mt-12 flex flex-col items-center gap-4 rounded-2xl border border-slate-700 bg-slate-800/50 p-8 sm:flex-row">
+          <MessageCircle className="h-10 w-10 shrink-0 text-dps-cyan" />
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="font-semibold">สั่งซื้อผ่าน Line</h3>
+            <p className="mt-1 text-sm text-slate-400">Line: @dps-swimming</p>
+          </div>
+          <Button variant="primary">Line: @dps-swimming</Button>
+        </div>
+
+        <div className="mt-8 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center text-slate-400 transition-colors hover:text-dps-cyan"
+          >
+            กลับหน้าแรก <ArrowRight className="ml-1 h-4 w-4" />
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

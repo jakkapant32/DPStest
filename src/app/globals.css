@@ -6,10 +6,40 @@
   html {
     scroll-behavior: smooth;
   }
+
+  body {
+    @apply bg-slate-50 text-slate-800;
+  }
+
+  ::selection {
+    @apply bg-dps-cyan text-white;
+  }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-brand-600 to-accent-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-dps-cyan to-blue-400 bg-clip-text text-transparent;
+  }
+
+  .hero-bg {
+    background-image: linear-gradient(
+        to right,
+        rgba(10, 25, 47, 0.9),
+        rgba(10, 25, 47, 0.6)
+      ),
+      url("https://images.unsplash.com/photo-1519315901367-f34f9b578f72?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  .pattern-bg {
+    background-color: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .clip-slant {
+    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
   }
 }

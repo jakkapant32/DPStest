@@ -16,14 +16,14 @@ export default async function AdminDashboardPage() {
       count: events.length,
       href: "/admin/events",
       icon: Calendar,
-      color: "text-brand-600 bg-brand-50",
+      color: "text-dps-blue bg-dps-cyan/10",
     },
     {
       label: "ผลการแข่งขัน",
       count: results.length,
       href: "/admin/results",
       icon: Trophy,
-      color: "text-accent-600 bg-purple-50",
+      color: "text-dps-cyan bg-dps-cyan/10",
     },
     {
       label: "สินค้า",
@@ -37,7 +37,7 @@ export default async function AdminDashboardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-      <p className="mt-1 text-gray-500">จัดการข้อมูล BlueHub</p>
+      <p className="mt-1 text-slate-500">จัดการข้อมูล DPS</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         {stats.map((s) => (
@@ -52,7 +52,7 @@ export default async function AdminDashboardPage() {
                   <s.icon className="h-6 w-6" />
                 </div>
               </div>
-              <p className="mt-3 flex items-center text-sm text-brand-600 opacity-0 transition-opacity group-hover:opacity-100">
+              <p className="mt-3 flex items-center text-sm text-dps-cyan opacity-0 transition-opacity group-hover:opacity-100">
                 จัดการ <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </p>
             </Card>
@@ -64,19 +64,19 @@ export default async function AdminDashboardPage() {
         <div className="flex flex-wrap gap-3">
           <Link
             href="/admin/events"
-            className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+            className="rounded-lg bg-dps-cyan/10 px-4 py-2 text-sm font-medium text-dps-navy hover:bg-dps-cyan/20"
           >
             + เพิ่มการแข่งขัน
           </Link>
           <Link
             href="/admin/results"
-            className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+            className="rounded-lg bg-dps-cyan/10 px-4 py-2 text-sm font-medium text-dps-navy hover:bg-dps-cyan/20"
           >
             + เพิ่มผลการแข่งขัน
           </Link>
           <Link
             href="/admin/products"
-            className="rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+            className="rounded-lg bg-dps-cyan/10 px-4 py-2 text-sm font-medium text-dps-navy hover:bg-dps-cyan/20"
           >
             + เพิ่มสินค้า
           </Link>

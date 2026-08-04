@@ -29,6 +29,21 @@ Open [http://localhost:3000](http://localhost:3000)
 | `/analytics` | Swimming Dual Analytics (CSV + Google Sheets) |
 | `/shop` | ร้านค้า |
 | `/about` | เกี่ยวกับเรา |
+| `/admin` | Admin Dashboard (ต้อง login) |
+| `/admin/login` | Admin login |
+
+## Admin Panel
+
+- URL: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
+- Default password (dev): `bluehub2026`
+- จัดการ: การแข่งขัน, ผลการแข่งขัน, สินค้า
+- ข้อมูลเก็บใน `data/store.json` (auto-seed จาก mock data ครั้งแรก)
+
+Set env vars for production:
+```
+ADMIN_PASSWORD=your-secure-password
+ADMIN_SECRET=random-secret-string
+```
 
 ## Analytics CSV Format
 

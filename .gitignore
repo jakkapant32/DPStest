@@ -36,3 +36,6 @@ next-env.d.ts
 
 # drizzle
 /drizzle
+
+# client reference files (long Thai filenames break Vercel deploy)
+/Client brief/

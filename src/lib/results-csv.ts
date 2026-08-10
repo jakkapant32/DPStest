@@ -105,7 +105,7 @@ export function getRankStyle(rank: number) {
       row: "bg-[#FFFAF0] hover:bg-[#FEF3C7]",
       name: "text-[#B45309]",
       rank: "text-[#B45309]",
-      medal: "🥇 ",
+      medal: 1 as const,
     };
   }
   if (rank === 2) {
@@ -113,7 +113,7 @@ export function getRankStyle(rank: number) {
       row: "bg-[#F8FAFC] hover:bg-[#F1F5F9]",
       name: "text-[#475569]",
       rank: "text-[#475569]",
-      medal: "🥈 ",
+      medal: 2 as const,
     };
   }
   if (rank === 3) {
@@ -121,13 +121,13 @@ export function getRankStyle(rank: number) {
       row: "bg-[#FFF5F0] hover:bg-[#FFEDD5]",
       name: "text-[#C2410C]",
       rank: "text-[#C2410C]",
-      medal: "🥉 ",
+      medal: 3 as const,
     };
   }
   return {
     row: "bg-white hover:bg-slate-50",
     name: "text-dps-navy",
     rank: "text-slate-700",
-    medal: "",
+    medal: null,
   };
 }

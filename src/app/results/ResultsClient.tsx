@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState, Fragment } from "react";
 import { ChevronDown, Loader2, Upload } from "lucide-react";
 import { Card, Button, SectionHeader } from "@/components/ui/Card";
+import { MedalIcon } from "@/components/ui/MedalIcon";
 import { cn } from "@/lib/utils";
 import { fetchCSVFromUrl } from "@/lib/analytics";
 import {
@@ -294,7 +295,10 @@ export function ResultsClient({
                           {rank}
                         </td>
                         <td className={cn("px-6 py-4 text-base font-semibold", style.name, isHovered && "font-bold")}>
-                          {style.medal}{row.name}
+                          <span className="inline-flex items-center gap-2">
+                            {style.medal && <MedalIcon rank={style.medal} />}
+                            {row.name}
+                          </span>
                         </td>
                         <td className="hidden px-6 py-4 text-slate-500 md:table-cell">{row.gender}</td>
                         <td className="hidden px-6 py-4 text-slate-500 sm:table-cell">{row.ageGroup}</td>

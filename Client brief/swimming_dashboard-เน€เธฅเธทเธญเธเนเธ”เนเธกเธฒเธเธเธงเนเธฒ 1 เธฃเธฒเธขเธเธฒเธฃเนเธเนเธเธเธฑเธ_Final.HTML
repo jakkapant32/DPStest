@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueHub Swimming Analytics (Multi-Events)</title>
+    <!-- STREAMING_CHUNK: Loading External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- STREAMING_CHUNK: Defining CSS Styles -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); }
+        .multi-select-box { max-height: 120px; overflow-y: auto; padding-right: 4px; }
+    </style>
+</head>
+<body class="text-slate-800 p-4 md:p-8 min-h-screen">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- STREAMING_CHUNK: Rendering Header and Upload Control Area -->
+        <header class="bg-white custom-shadow rounded-2xl p-6 border-t-4 border-blue-600 space-y-4 transition-all">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                        🏊‍♂️ BlueHub Swimming Analytics
+                    </h1>
+                    <p class="text-slate-500 text-sm mt-1">เปรียบเทียบและวิเคราะห์ผลการแข่งขันแบบ Multi-Event</p>
+                </div>
+            </div>
+            
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 mt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="text-sm font-semibold text-slate-800 flex items-center gap-2">➕ นำเข้าผลการแข่งขัน (เพิ่มกี่รายการก็ได้)</label>
+                    <button onclick="clearAllData()" class="text-xs text-red-600 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-full transition font-medium">🗑️ ล้างข้อมูลทั้งหมด</button>
+                </div>
+                
+                <div class="flex flex-col md:flex-row gap-3">
+                    <input type="text" id="datasetTag" placeholder="ตั้งชื่อ (เช่น 200m หญิง)" class="w-full md:w-1/4 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="sheetUrlInput" placeholder="วางลิงก์ Google Sheets (CSV) ที่นี่..." class="w-full md:w-2/4 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button id="loadUrlBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap shadow-sm">
+                        ดึงข้อมูลออนไลน์
+                    </button>
+                </div>
+
+                <div class="mt-4 flex items-center gap-3">
+                    <span class="text-sm font-medium text-slate-600">หรืออัปโหลดไฟล์ CSV:</span>
+                    <input type="file" id="fileUpload" accept=".csv" class="text-sm text-slate-500 file:mr-2 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 cursor-pointer">
+                </div>
+                
+                <div id="loadedTags" class="mt-4 flex flex-wrap gap-2">
+                    <!-- ป้ายกำกับข้อมูลที่โหลดแล้วจะแสดงที่นี่ -->
+                </div>
+            </div>
+        </header>
+
+        <!-- STREAMING_CHUNK: Rendering Welcome State -->
+        <div id="welcomeState" class="bg-white custom-shadow rounded-2xl p-16 text-center border border-slate-200">
+            <div class="text-6xl mb-4 animate-bounce">📊</div>
+            <h2 class="text-2xl font-semibold text-slate-700 mb-2">เริ่มวิเคราะห์สถิติของคุณ</h2>
+            <p class="text-slate-500 max-w-md mx-auto">ตั้งชื่อรายการ และโหลดไฟล์ หรือลิงก์ Google Sheets เข้าสู่ระบบ เพื่อสร้างกราฟ Pacing</p>
+        </div>
+
+        <!-- STREAMING_CHUNK: Rendering Dashboard Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="dashboardContent" style="display: none;">
+            
+            <!-- Sidebar: ตัวกรอง -->
+            <div class="md:col-span-1 space-y-5">
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5" id="genderFilterContainer">
+                    <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">🚻 เลือกเพศ</h3>
+                    <select id="genderSelect" class="w-full rounded-xl border border-slate-300 p-2.5 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-sm">
+                        <option value="All">ทั้งหมด (All Genders)</option>
+                    </select>
+                </div>
+
+                <!-- Multi-select Age -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold text-slate-700 flex items-center gap-2">🎯 เลือกรุ่นอายุ</h3>
+                        <button id="selectAllAgeBtn" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded transition">สลับ</button>
+                    </div>
+                    <div id="ageFilterBox" class="multi-select-box space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner"></div>
+                </div>
+
+                <!-- Multi-select Club -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5" id="clubFilterContainer" style="display: none;">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold text-slate-700 flex items-center gap-2">🏫 เลือกสโมสร</h3>
+                        <button id="selectAllClubBtn" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded transition">สลับ</button>
+                    </div>
+                    <div id="clubFilterBox" class="multi-select-box space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner"></div>
+                </div>
+
+                <!-- Chart Type -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5">
+                    <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">📈 รูปแบบกราฟ</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition border border-transparent hover:border-slate-200">
+                            <input type="radio" name="chartType" value="pace" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-slate-700">ความเร็วต่อช่วง (Pacing)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition border border-transparent hover:border-slate-200">
+                            <input type="radio" name="chartType" value="cumulative" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-slate-700">เวลาสะสมรวม (Cumulative)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Swimmer List -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 flex flex-col h-[280px]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold text-slate-700 flex items-center gap-2">👤 เลือกนักกีฬา</h3>
+                        <button id="selectAllBtn" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded transition">สลับ</button>
+                    </div>
+                    <div id="swimmerList" class="flex-1 overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner"></div>
+                </div>
+            </div>
+
+            <!-- Main Chart Area -->
+            <div class="md:col-span-3 flex flex-col space-y-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 border-l-4 border-l-emerald-500 hover:-translate-y-1 transition-transform">
+                        <p class="text-sm text-slate-500 font-medium mb-1">สถิติที่แสดงผล</p>
+                        <p id="statCount" class="text-3xl font-bold text-slate-800">0 <span class="text-base font-normal text-slate-500">รายการ</span></p>
+                    </div>
+                    <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 border-l-4 border-l-blue-500 hover:-translate-y-1 transition-transform">
+                        <p class="text-sm text-slate-500 font-medium mb-1">เวลาจบที่ดีที่สุด</p>
+                        <p id="statBestTime" class="text-3xl font-bold text-slate-800">-</p>
+                    </div>
+                    <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 border-l-4 border-l-purple-500 hover:-translate-y-1 transition-transform">
+                        <p class="text-sm text-slate-500 font-medium mb-1">ความเร็วเฉลี่ยรวม (Pace)</p>
+                        <p id="statAvgPace" class="text-3xl font-bold text-slate-800">-</p>
+                    </div>
+                </div>
+
+                <!-- Plotly Chart -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-4 md:p-6 flex-1 flex flex-col">
+                    <div id="chartContainer" class="w-full flex-1 min-h-[500px]"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STREAMING_CHUNK: Initializing Javascript logic -->
+    <script>
+        let globalData = [];
+        let distancesSet = new Set(); 
+        let distances = [];
+        let currentChartType = 'pace';
+        let hasGenderData = false;
+        let hasClubData = false; 
+        let datasetCounter = 1;
+
+        function timeToSeconds(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return null;
+            let str = timeStr.trim();
+            if (str === "" || str === "-") return null;
+            let parts = str.split(':');
+            if (parts.length === 2) return parseInt(parts[0]) * 60 + parseFloat(parts[1]); 
+            else if (parts.length === 1) return parseFloat(parts[0]);
+            return null;
+        }
+
+        function formatTime(totalSeconds) {
+            if (totalSeconds === null || isNaN(totalSeconds) || !isFinite(totalSeconds)) return "-";
+            let m = Math.floor(totalSeconds / 60);
+            let s = (totalSeconds % 60).toFixed(2);
+            if (s < 10) s = "0" + s;
+            return m > 0 ? `${m}:${s}` : `${s}`;
+        }
+
+        function clearAllData() {
+            globalData = [];
+            distancesSet.clear();
+            distances = [];
+            hasGenderData = false;
+            hasClubData = false;
+            datasetCounter = 1;
+            
+            document.getElementById('welcomeState').style.display = 'block';
+            document.getElementById('dashboardContent').style.display = 'none';
+            document.getElementById('loadedTags').innerHTML = '';
+            document.getElementById('datasetTag').value = '';
+            document.getElementById('sheetUrlInput').value = '';
+            document.getElementById('fileUpload').value = '';
+        }
+
+        /* STREAMING_CHUNK: Processing data append logic */
+        function processData(data) {
+            if (data.length === 0) { alert("ไม่พบข้อมูลในไฟล์/ลิงก์นี้"); return; }
+            
+            let tagInput = document.getElementById('datasetTag').value.trim();
+            let currentTag = tagInput ? tagInput : `ข้อมูลที่ ${datasetCounter}`;
+            datasetCounter++;
+
+            let cols = Object.keys(data[0]);
+            let localDistances = cols.filter(col => col.trim().match(/^\d+m$/i)).sort((a, b) => parseInt(a) - parseInt(b));
+
+            if(localDistances.length === 0) { alert("ไม่พบคอลัมน์ระยะทาง (เช่น 50m, 100m) ในชุดข้อมูลนี้"); return; }
+
+            localDistances.forEach(d => distancesSet.add(d));
+            distances = Array.from(distancesSet).sort((a, b) => parseInt(a) - parseInt(b));
+
+            let localHasGender = cols.some(k => k.toLowerCase() === 'gender' || k === 'เพศ');
+            let localHasClub = cols.some(k => k.toLowerCase() === 'สโมสร' || k.toLowerCase() === 'club');
+            
+            hasGenderData = hasGenderData || localHasGender;
+            hasClubData = hasClubData || localHasClub;
+
+            let newData = data.map(row => {
+                let processed = { ...row };
+                let cumulative = {};
+                let pace = {};
+
+                localDistances.forEach((d, index) => {
+                    let sec = timeToSeconds(row[d]);
+                    cumulative[d] = sec;
+                    if (sec !== null) {
+                        if (index === 0) pace[d] = sec; 
+                        else {
+                            let prevD = localDistances[index - 1];
+                            let prevSec = timeToSeconds(row[prevD]);
+                            if (prevSec !== null && sec >= prevSec) {
+                                pace[d] = parseFloat((sec - prevSec).toFixed(2));
+                            } else pace[d] = null;
+                        }
+                    } else pace[d] = null;
+                });
+
+                processed._cumulative = cumulative;
+                processed._pace = pace;
+                processed['รุ่นอายุ'] = row['รุ่นอายุ'] ? row['รุ่นอายุ'].trim() : 'Unknown';
+                
+                const nameKey = Object.keys(row).find(k => k.includes('ชื่อ') || k.toLowerCase().includes('name'));
+                let originalName = nameKey && row[nameKey] ? row[nameKey].trim() : 'Unknown';
+                
+                processed['_originalName'] = originalName;
+                processed['ชื่อ-นามสกุล'] = `${originalName} [${currentTag}]`;
+                processed['_datasetTag'] = currentTag;
+                
+                const genderKey = Object.keys(row).find(k => k.toLowerCase() === 'gender' || k === 'เพศ');
+                if(genderKey && row[genderKey]) processed['_gender'] = row[genderKey].trim();
+                else processed['_gender'] = 'Unknown';
+                
+                const clubKey = Object.keys(row).find(k => k.toLowerCase() === 'สโมสร' || k.toLowerCase() === 'club');
+                if(clubKey && row[clubKey]) processed['_club'] = row[clubKey].trim();
+                else processed['_club'] = 'Unknown';
+
+                return processed;
+            });
+
+            globalData = globalData.concat(newData); 
+
+            let tagBadge = document.createElement('span');
+            tagBadge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800";
+            tagBadge.innerText = currentTag;
+            document.getElementById('loadedTags').appendChild(tagBadge);
+            
+            document.getElementById('datasetTag').value = '';
+
+            document.getElementById('welcomeState').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'grid';
+            document.getElementById('genderFilterContainer').style.display = hasGenderData ? 'block' : 'none';
+            document.getElementById('clubFilterContainer').style.display = hasClubData ? 'block' : 'none';
+
+            populateGenders();
+            populateAgesMulti();
+            populateClubsMulti(); 
+            populateSwimmers();
+            updateDashboard();
+        }
+
+        /* STREAMING_CHUNK: Input Event Listeners */
+        document.getElementById('loadUrlBtn').addEventListener('click', function() {
+            let url = document.getElementById('sheetUrlInput').value.trim();
+            if(!url) { alert("กรุณาวางลิงก์ Google Sheets ก่อนครับ"); return; }
+            
+            let btn = document.getElementById('loadUrlBtn');
+            let originalText = btn.innerText;
+            btn.innerText = "กำลังดึง...";
+            
+            Papa.parse(url, {
+                download: true, header: true, skipEmptyLines: true,
+                complete: function(results) { 
+                    btn.innerText = originalText; 
+                    document.getElementById('sheetUrlInput').value = '';
+                    processData(results.data); 
+                },
+                error: function(err) { btn.innerText = originalText; alert("ไม่สามารถดึงข้อมูลได้ Error: " + err.message); }
+            });
+        });
+
+        document.getElementById('fileUpload').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(results) { 
+                processData(results.data); 
+                document.getElementById('fileUpload').value = ''; 
+            }});
+        });
+
+        /* STREAMING_CHUNK: Filter Populators */
+        function populateGenders() {
+            let genderSelect = document.getElementById('genderSelect');
+            let genders = [...new Set(globalData.map(d => d['_gender']))].filter(g => g !== 'Unknown').sort();
+            genderSelect.innerHTML = '<option value="All">ทั้งหมด (All Genders)</option>';
+            genders.forEach(g => {
+                let opt = document.createElement('option');
+                opt.value = g;
+                let label = g;
+                if(g.toUpperCase() === 'M' || g === 'ชาย') label = 'ชาย (Male)';
+                if(g.toUpperCase() === 'F' || g === 'หญิง') label = 'หญิง (Female)';
+                opt.innerText = label;
+                genderSelect.appendChild(opt);
+            });
+        }
+
+        function populateAgesMulti() {
+            let ageBox = document.getElementById('ageFilterBox');
+            let ages = [...new Set(globalData.map(d => d['รุ่นอายุ']))].filter(a => a !== 'Unknown').sort();
+            
+            let existingChecked = Array.from(document.querySelectorAll('.age-checkbox:checked')).map(cb => cb.value);
+            ageBox.innerHTML = '';
+            
+            ages.forEach(age => {
+                let isChecked = existingChecked.length === 0 || existingChecked.includes(age) ? 'checked' : '';
+                let label = document.createElement('label');
+                label.className = "flex items-center space-x-3 p-1 hover:bg-blue-100 rounded cursor-pointer transition";
+                label.innerHTML = `<input type="checkbox" value="${age}" class="age-checkbox w-4 h-4 text-blue-600 rounded cursor-pointer" ${isChecked}>
+                                   <span class="text-sm text-slate-700 select-none">${age}</span>`;
+                label.querySelector('input').addEventListener('change', () => { populateSwimmers(); updateDashboard(); });
+                ageBox.appendChild(label);
+            });
+        }
+
+        function populateClubsMulti() {
+            if(!hasClubData) return;
+            let clubBox = document.getElementById('clubFilterBox');
+            let clubs = [...new Set(globalData.map(d => d['_club']))].filter(c => c !== 'Unknown' && c !== '').sort();
+            
+            let existingChecked = Array.from(document.querySelectorAll('.club-checkbox:checked')).map(cb => cb.value);
+            clubBox.innerHTML = '';
+            
+            clubs.forEach(c => {
+                let isChecked = existingChecked.length === 0 || existingChecked.includes(c) ? 'checked' : '';
+                let label = document.createElement('label');
+                label.className = "flex items-center space-x-3 p-1 hover:bg-blue-100 rounded cursor-pointer transition";
+                label.innerHTML = `<input type="checkbox" value="${c}" class="club-checkbox w-4 h-4 text-blue-600 rounded cursor-pointer" ${isChecked}>
+                                   <span class="text-sm text-slate-700 truncate select-none" title="${c}">${c}</span>`;
+                label.querySelector('input').addEventListener('change', () => { populateSwimmers(); updateDashboard(); });
+                clubBox.appendChild(label);
+            });
+        }
+
+        function populateSwimmers() {
+            let selectedGender = hasGenderData ? document.getElementById('genderSelect').value : 'All';
+            let selectedAges = Array.from(document.querySelectorAll('.age-checkbox:checked')).map(cb => cb.value);
+            let selectedClubs = hasClubData ? Array.from(document.querySelectorAll('.club-checkbox:checked')).map(cb => cb.value) : [];
+
+            let swimmerListDiv = document.getElementById('swimmerList');
+            let existingCheckedNames = Array.from(document.querySelectorAll('.swimmer-checkbox:checked')).map(cb => cb.value);
+            swimmerListDiv.innerHTML = '';
+
+            let filteredSwimmers = globalData.filter(d => {
+                let matchGender = true; let matchAge = true; let matchClub = true;
+
+                if (hasGenderData && selectedGender !== 'All') {
+                    let g = d['_gender'].toUpperCase();
+                    let sel = selectedGender.toUpperCase();
+                    matchGender = (g === sel || (sel === 'M' && g === 'ชาย') || (sel === 'F' && g === 'หญิง') || d['_gender'] === selectedGender);
+                }
+                
+                if (selectedAges.length > 0) matchAge = selectedAges.includes(d['รุ่นอายุ']);
+                else matchAge = false;
+
+                if (hasClubData) {
+                    if (selectedClubs.length > 0) matchClub = selectedClubs.includes(d['_club']);
+                    else matchClub = false; 
+                }
+
+                return matchGender && matchAge && matchClub;
+            });
+
+            let names = [...new Set(filteredSwimmers.map(d => d['ชื่อ-นามสกุล']))].sort();
+            
+            names.forEach(name => {
+                let isChecked = existingCheckedNames.length === 0 || existingCheckedNames.includes(name) ? 'checked' : '';
+                let label = document.createElement('label');
+                label.className = "flex items-center space-x-3 p-2 hover:bg-blue-50 rounded-lg cursor-pointer transition border border-transparent";
+                let checkbox = document.createElement('input');
+                checkbox.type = "checkbox";
+                checkbox.value = name;
+                checkbox.className = "swimmer-checkbox w-4 h-4 text-blue-600 rounded cursor-pointer";
+                if(isChecked) checkbox.checked = true;
+                
+                checkbox.addEventListener('change', updateDashboard);
+                
+                let span = document.createElement('span');
+                span.className = "text-sm text-slate-700 truncate select-none";
+                span.innerText = name;
+                
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                swimmerListDiv.appendChild(label);
+            });
+        }
+
+        /* STREAMING_CHUNK: Filtering Handlers */
+        document.getElementById('genderSelect').addEventListener('change', () => { populateSwimmers(); updateDashboard(); });
+        document.querySelectorAll('input[name="chartType"]').forEach(radio => {
+            radio.addEventListener('change', function() { currentChartType = this.value; updateDashboard(); });
+        });
+
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            let cbs = document.querySelectorAll('.swimmer-checkbox');
+            let state = !Array.from(cbs).every(c => c.checked);
+            cbs.forEach(c => c.checked = state); updateDashboard();
+        });
+        document.getElementById('selectAllAgeBtn').addEventListener('click', () => {
+            let cbs = document.querySelectorAll('.age-checkbox');
+            let state = !Array.from(cbs).every(c => c.checked);
+            cbs.forEach(c => c.checked = state); populateSwimmers(); updateDashboard();
+        });
+        document.getElementById('selectAllClubBtn').addEventListener('click', () => {
+            let cbs = document.querySelectorAll('.club-checkbox');
+            let state = !Array.from(cbs).every(c => c.checked);
+            cbs.forEach(c => c.checked = state); populateSwimmers(); updateDashboard();
+        });
+
+        /* STREAMING_CHUNK: Rendering Plotly Chart */
+        function updateDashboard() {
+            let selectedCheckboxes = document.querySelectorAll('.swimmer-checkbox:checked');
+            let selectedNames = Array.from(selectedCheckboxes).map(c => c.value);
+            let filteredData = globalData.filter(d => selectedNames.includes(d['ชื่อ-นามสกุล']));
+
+            document.getElementById('statCount').innerHTML = `${filteredData.length} <span class="text-base font-normal text-slate-500">รายการ</span>`;
+
+            let minTime = Infinity;
+            filteredData.forEach(d => {
+                let lastValidDist = distances.slice().reverse().find(dist => d._cumulative[dist] !== undefined && d._cumulative[dist] !== null);
+                if(lastValidDist && d._cumulative[lastValidDist] < minTime) minTime = d._cumulative[lastValidDist];
+            });
+            document.getElementById('statBestTime').innerText = minTime !== Infinity ? formatTime(minTime) : '-';
+
+            let allPaces = filteredData.flatMap(d => Object.values(d._pace).filter(v => v !== null));
+            if (allPaces.length > 0) {
+                let avgPace = allPaces.reduce((a, b) => a + b, 0) / allPaces.length;
+                document.getElementById('statAvgPace').innerText = formatTime(avgPace);
+            } else {
+                document.getElementById('statAvgPace').innerText = '-';
+            }
+
+            let traces = filteredData.map(swimmer => {
+                let yData = [];
+                let hoverTexts = [];
+                let isPace = currentChartType === 'pace';
+                let swimmerName = swimmer['ชื่อ-นามสกุล']; // ชื่อนักกีฬาและ Tag
+                
+                distances.forEach(d => {
+                    let val = isPace ? swimmer._pace[d] : swimmer._cumulative[d];
+                    yData.push(val);
+                    if(val !== undefined && val !== null) {
+                        hoverTexts.push(`<b>ระยะ:</b> ${d}<br><b>เวลา:</b> ${formatTime(val)}`);
+                    } else {
+                        hoverTexts.push(`<b>ระยะ:</b> ${d}<br><b>เวลา:</b> -`);
+                    }
+                });
+
+                return {
+                    x: distances.map(d => parseInt(d)), y: yData, 
+                    name: swimmerName, // ให้กล่อง Legend รู้จักชื่อ
+                    mode: 'lines+markers', text: hoverTexts,
+                    
+                    // 1. แก้ไขบั๊ก %{name} ด้วยการใส่ ${swimmerName} เข้าไปใน String ตรงๆ
+                    hovertemplate: `<b>${swimmerName}</b><br>%{text}<extra></extra>`,
+                    
+                    line: { shape: 'spline', smoothing: 0.4, width: 2.5 },
+                    marker: { size: 6, symbol: 'circle' }
+                };
+            });
+
+            let allY = traces.flatMap(t => t.y.filter(v => v !== null && v !== undefined));
+            let maxY = Math.max(...allY, 0);
+            let minY = Math.max(Math.min(...allY, 0), 0);
+            let step = currentChartType === 'pace' ? 5 : (maxY > 600 ? 120 : 60);
+            
+            if (currentChartType === 'pace') {
+                minY = Math.floor(Math.min(...allY) / 5) * 5; 
+                if(isNaN(minY) || !isFinite(minY)) minY = 20;
+            } else minY = 0;
+
+            let tickVals = [], tickTexts = [];
+            for(let i = minY; i <= maxY + step; i += step) {
+                tickVals.push(i); tickTexts.push(formatTime(i));
+            }
+
+            let layout = {
+                title: { text: currentChartType === 'pace' ? 'กราฟวิเคราะห์ความเร็ว (Pace ต่อช่วง)' : 'กราฟวิเคราะห์เวลาสะสม (Cumulative Time)', font: { size: 18, family: 'Inter', color: '#1e293b' }, y: 0.95 },
+                xaxis: { title: { text: 'ระยะทาง (เมตร)', font: { color: '#64748b' } }, tickvals: distances.map(d => parseInt(d)), gridcolor: '#f1f5f9', zeroline: false },
+                yaxis: { title: { text: currentChartType === 'pace' ? 'เวลา (นาที:วินาที)' : 'เวลารวม (นาที:วินาที)', font: { color: '#64748b' } }, tickmode: 'array', tickvals: tickVals, ticktext: tickTexts, gridcolor: '#f1f5f9', zerolinecolor: '#e2e8f0' },
+                plot_bgcolor: 'white', paper_bgcolor: 'white', 
+                
+                // 2a. ปรับ Hovermode เป็น closest เพื่อให้จับแยกเส้นได้
+                hovermode: 'closest', 
+                
+                margin: { t: 60, l: 70, r: 20, b: 80 },
+                legend: { orientation: 'h', y: -0.2, font: { family: 'Inter', size: 12, color: '#475569' } }
+            };
+
+            let chartDiv = document.getElementById('chartContainer');
+            Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displayModeBar: false });
+
+            // 2b. เพิ่มลอจิกในการดรอปความสว่างเส้นอื่น เมื่อมีเส้นนึงโดนชี้
+            if (chartDiv.removeAllListeners) {
+                chartDiv.removeAllListeners('plotly_hover');
+                chartDiv.removeAllListeners('plotly_unhover');
+            }
+
+            // เมื่อเมาส์ชี้ไปที่กราฟเส้นนึง
+            chartDiv.on('plotly_hover', function(data) {
+                let curveNum = data.points[0].curveNumber;
+                let numTraces = chartDiv.data.length;
+                let opacities = [];
+                let lineSizes = [];
+                
+                for (let i = 0; i < numTraces; i++) {
+                    if (i === curveNum) {
+                        opacities.push(1);       // เส้นที่เราชี้ ความสว่าง 100%
+                        lineSizes.push(4.5);     // ความหนาเส้นเพิ่มขึ้น
+                    } else {
+                        opacities.push(0.15);    // เส้นอื่นจางลงเหลือ 15%
+                        lineSizes.push(2.5);     // ขนาดเท่าเดิม
+                    }
+                }
+                // สั่งเปลี่ยนกราฟทันที
+                Plotly.restyle(chartDiv, { opacity: opacities, 'line.width': lineSizes });
+            });
+
+            // เมื่อเมาส์ออกจากกราฟ
+            chartDiv.on('plotly_unhover', function(data) {
+                let numTraces = chartDiv.data.length;
+                let opacities = [];
+                let lineSizes = [];
+                
+                for (let i = 0; i < numTraces; i++) {
+                    opacities.push(1);       // คืนค่าเป็น 100% ทุกเส้น
+                    lineSizes.push(2.5);     // คืนค่าขนาดเท่าเดิม
+                }
+                Plotly.restyle(chartDiv, { opacity: opacities, 'line.width': lineSizes });
+            });
+        }
+    </script>
+</body>
+</html>
+```eof

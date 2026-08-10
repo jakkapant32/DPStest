@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from "lucide-react";
 import { siteConfig } from "@/lib/types";
+import { eventsMenuHref, eventsTools } from "@/lib/events-menu";
 import { Logo } from "./Logo";
 
 export function Footer() {
@@ -27,16 +28,39 @@ export function Footer() {
           <div className="md:col-span-2 md:col-start-6">
             <h4 className="mb-6 font-bold">เมนู</h4>
             <ul className="space-y-3">
-              {siteConfig.nav.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="text-slate-400 transition-colors hover:text-dps-cyan"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+              {siteConfig.nav.flatMap((item) =>
+                item.href === "/events"
+                  ? [
+                      <li key={eventsMenuHref}>
+                        <Link
+                          href={eventsMenuHref}
+                          className="text-slate-400 transition-colors hover:text-dps-cyan"
+                        >
+                          จัดการแข่งขัน
+                        </Link>
+                      </li>,
+                      ...eventsTools.map((sub) => (
+                        <li key={sub.href} className="pl-3">
+                          <Link
+                            href={sub.href}
+                            className="text-slate-400 transition-colors hover:text-dps-cyan"
+                          >
+                            {sub.tabLabel}
+                          </Link>
+                        </li>
+                      )),
+                    ]
+                  : [
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className="text-slate-400 transition-colors hover:text-dps-cyan"
+                        >
+                          {item.label}
+                        </Link>
+                      </li>,
+                    ]
+              )}
             </ul>
           </div>
 

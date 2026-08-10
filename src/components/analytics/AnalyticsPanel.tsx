@@ -40,6 +40,7 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
   const [clubs, setClubs] = useState<string[]>([]);
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"pacing" | "cumulative">("pacing");
+  const [hoveredAthlete, setHoveredAthlete] = useState<string | null>(null);
 
   const allAgeGroups = useMemo(
     () => Array.from(new Set(records.map((r) => r.ageGroup).filter(Boolean))),
@@ -325,17 +326,27 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                   labelFormatter={(label) => `${label}m`}
                 />
                 <Legend />
-                {activeAthletes.map((athlete, i) => (
-                  <Line
-                    key={athlete}
-                    type="monotone"
-                    dataKey={athlete}
-                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                ))}
+                {activeAthletes.map((athlete, i) => {
+                  const isHighlighted =
+                    hoveredAthlete === null || hoveredAthlete === athlete;
+                  return (
+                    <Line
+                      key={athlete}
+                      type="monotone"
+                      dataKey={athlete}
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      strokeWidth={hoveredAthlete === athlete ? 4 : 2}
+                      strokeOpacity={isHighlighted ? 1 : 0.15}
+                      dot={{
+                        r: hoveredAthlete === athlete ? 6 : 4,
+                        fillOpacity: isHighlighted ? 1 : 0.15,
+                      }}
+                      activeDot={{ r: 7 }}
+                      onMouseEnter={() => setHoveredAthlete(athlete)}
+                      onMouseLeave={() => setHoveredAthlete(null)}
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           )}

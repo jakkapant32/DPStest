@@ -1,7 +1,28 @@
 import Papa from "papaparse";
 import type { Gender, SwimRecord } from "./types";
 
-export function parseCSVToRecords(csvText: string): SwimRecord[] {
+export function timeToSeconds(timeStr: string | undefined | null): number | null {
+  if (!timeStr || typeof timeStr !== "string") return null;
+  const str = timeStr.trim();
+  if (str === "" || str === "-") return null;
+  const parts = str.split(":");
+  if (parts.length === 2) {
+    return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+  }
+  const n = parseFloat(str);
+  return Number.isNaN(n) ? null : n;
+}
+
+function parseGender(raw: string | undefined): Gender {
+  const g = (raw ?? "").trim().toLowerCase();
+  if (g === "m" || g.startsWith("m") || g === "ชาย") return "male";
+  return "female";
+}
+
+export function parseCSVToRecords(
+  csvText: string,
+  options?: { tag?: string }
+): SwimRecord[] {
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
@@ -11,51 +32,91 @@ export function parseCSVToRecords(csvText: string): SwimRecord[] {
     throw new Error(parsed.errors[0]?.message ?? "CSV parse error");
   }
 
+  const cols = Object.keys(parsed.data[0] ?? {});
+  const distanceCols = cols
+    .filter((c) => c.trim().match(/^\d+m$/i))
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+  const nameKey = cols.find(
+    (k) => k.includes("ชื่อ") || k.toLowerCase().includes("name")
+  );
+  const genderKey = cols.find(
+    (k) => k.toLowerCase() === "gender" || k === "เพศ"
+  );
+  const clubKey = cols.find(
+    (k) => k.toLowerCase() === "สโมสร" || k.toLowerCase() === "club"
+  );
+
   return parsed.data
     .map((row) => {
-      const athlete = row.athlete ?? row["ชื่อ"] ?? row["name"] ?? "";
-      if (!athlete) return null;
+      const rawName =
+        (nameKey && row[nameKey]?.trim()) ||
+        row.athlete?.trim() ||
+        row["ชื่อ"]?.trim() ||
+        row.name?.trim() ||
+        "";
+      if (!rawName) return null;
 
-      const genderRaw = (row.gender ?? row["เพศ"] ?? "female").toLowerCase();
-      const gender: Gender =
-        genderRaw.startsWith("m") || genderRaw === "ชาย" ? "male" : "female";
+      const athlete = options?.tag
+        ? `${rawName} (${options.tag})`
+        : rawName;
 
       const splits: Record<string, number> = {};
-      for (const key of Object.keys(row)) {
-        const match = key.match(/split[_\s]?(\d+)/i);
-        if (match) {
-          const val = parseFloat(row[key] ?? "");
-          if (!Number.isNaN(val)) splits[match[1]] = val;
+
+      if (distanceCols.length > 0) {
+        distanceCols.forEach((col) => {
+          const dist = col.replace(/m$/i, "");
+          const sec = timeToSeconds(row[col]);
+          if (sec !== null) splits[dist] = sec;
+        });
+      } else {
+        for (const key of Object.keys(row)) {
+          const match = key.match(/split[_\s]?(\d+)/i);
+          if (match) {
+            const sec = timeToSeconds(row[key]);
+            if (sec !== null) splits[match[1]] = sec;
+          }
+        }
+        if (Object.keys(splits).length === 0) {
+          for (const dist of ["50", "100", "150", "200", "400", "1500"]) {
+            const sec = timeToSeconds(row[dist] ?? row[`${dist}m`]);
+            if (sec !== null) splits[dist] = sec;
+          }
         }
       }
 
-      if (Object.keys(splits).length === 0) {
-        for (const dist of ["50", "100", "150", "200", "400"]) {
-          const val = parseFloat(row[dist] ?? row[`${dist}m`] ?? "");
-          if (!Number.isNaN(val)) splits[dist] = val;
-        }
-      }
-
-      const totalTime = parseFloat(
-        row.total_time ?? row["total"] ?? row["time"] ?? row["เวลา"] ?? "0"
+      const distKeys = Object.keys(splits).map(Number).sort((a, b) => a - b);
+      const lastDist = distKeys[distKeys.length - 1];
+      const totalFromSplits = lastDist ? splits[String(lastDist)] : null;
+      const totalParsed = timeToSeconds(
+        row.total_time ?? row["total"] ?? row["time"] ?? row["เวลา"]
       );
+      const totalTime = totalFromSplits ?? totalParsed ?? 0;
 
       return {
         athlete,
-        gender,
-        ageGroup: row.age_group ?? row["ageGroup"] ?? row["รุ่นอายุ"] ?? "",
-        club: row.club ?? row["สโมสร"] ?? "",
+        gender: parseGender(genderKey ? row[genderKey] : row.gender),
+        ageGroup:
+          row["รุ่นอายุ"]?.trim() ||
+          row.age_group?.trim() ||
+          row.ageGroup?.trim() ||
+          "",
+        club: (clubKey && row[clubKey]?.trim()) || row.club?.trim() || row["สโมสร"]?.trim() || "",
         stroke: row.stroke ?? row["ท่า"] ?? "freestyle",
-        distance: parseInt(row.distance ?? row["ระยะ"] ?? "200", 10),
+        distance: lastDist ?? parseInt(row.distance ?? row["ระยะ"] ?? "200", 10),
         splits,
-        totalTime: Number.isNaN(totalTime) ? 0 : totalTime,
+        totalTime,
       } satisfies SwimRecord;
     })
     .filter((r): r is SwimRecord => r !== null);
 }
 
 export async function fetchCSVFromUrl(url: string): Promise<string> {
-  const res = await fetch(url);
+  let fetchUrl = url.trim();
+  if (fetchUrl.includes("docs.google.com/spreadsheets")) {
+    fetchUrl = fetchUrl.replace(/\/edit.*$/, "/export?format=csv");
+  }
+  const res = await fetch(fetchUrl);
   if (!res.ok) throw new Error(`Failed to fetch CSV: ${res.status}`);
   return res.text();
 }
@@ -72,24 +133,25 @@ export function getPaceData(
   });
   const sortedDistances = Array.from(distances).sort((a, b) => a - b);
 
-  return sortedDistances.map((dist) => {
+  return sortedDistances.map((dist, idx) => {
     const point: { distance: number; [key: string]: number | string } = {
       distance: dist,
     };
     records.forEach((r) => {
       const splitVal = r.splits[String(dist)];
       if (splitVal === undefined) return;
-      if (mode === "pacing") {
+      if (mode === "cumulative") {
         point[r.athlete] = splitVal;
       } else {
-        const prevDist =
-          sortedDistances.filter((d) => d <= dist).slice(0, -1).pop() ?? 0;
-        let cumulative = 0;
-        for (const d of sortedDistances) {
-          if (d > dist) break;
-          cumulative += r.splits[String(d)] ?? 0;
+        const prevDist = idx > 0 ? sortedDistances[idx - 1] : null;
+        if (prevDist !== null) {
+          const prev = r.splits[String(prevDist)];
+          if (prev !== undefined) {
+            point[r.athlete] = parseFloat((splitVal - prev).toFixed(2));
+          }
+        } else {
+          point[r.athlete] = splitVal;
         }
-        point[r.athlete] = cumulative;
       }
     });
     return point;
@@ -101,12 +163,21 @@ export function computeStats(records: SwimRecord[]) {
     return { count: 0, bestTime: 0, avgPace: 0 };
   }
   const times = records.map((r) => r.totalTime).filter((t) => t > 0);
-  const bestTime = Math.min(...times);
-  const avgPace =
-    records.reduce((sum, r) => {
-      const firstSplit = r.splits["50"] ?? r.totalTime / (r.distance / 50);
-      return sum + firstSplit;
-    }, 0) / records.length;
+  const bestTime = times.length ? Math.min(...times) : 0;
+
+  const paces: number[] = [];
+  records.forEach((r) => {
+    const dists = Object.keys(r.splits).map(Number).sort((a, b) => a - b);
+    if (dists.length >= 2) {
+      const seg = r.splits[String(dists[1])]! - r.splits[String(dists[0])]!;
+      paces.push(seg);
+    } else if (r.splits["50"]) {
+      paces.push(r.splits["50"]);
+    }
+  });
+  const avgPace = paces.length
+    ? paces.reduce((a, b) => a + b, 0) / paces.length
+    : 0;
 
   return { count: records.length, bestTime, avgPace };
 }
@@ -121,3 +192,14 @@ export const CHART_COLORS = [
   "#eab308",
   "#ec4899",
 ];
+
+export const SAMPLE_FILES = {
+  fr200: {
+    label: "200FR M&F (ตัวอย่าง)",
+    path: "/sample-data/200FR-M-F-v2.csv",
+  },
+  m1500: {
+    label: "1500M หญิง (ตัวอย่าง)",
+    path: "/sample-data/1500M-F-v2.csv",
+  },
+} as const;

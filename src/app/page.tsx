@@ -4,11 +4,13 @@ import {
   ArrowRight,
   BarChart3,
   Calendar,
+  Camera,
   CheckCircle2,
   GraduationCap,
   ShieldCheck,
   ShoppingBag,
   Trophy,
+  Users,
 } from "lucide-react";
 import { Card, Badge, Button, SectionHeader } from "@/components/ui/Card";
 import { getEvents, getProducts, getResults } from "@/lib/store";
@@ -18,25 +20,46 @@ import { th } from "date-fns/locale";
 
 const services = [
   {
-    icon: Trophy,
-    title: "จัดการแข่งขันกีฬาว่ายน้ำ",
-    desc: "รับจัดอีเวนต์และทัวร์นาเมนต์ว่ายน้ำทุกระดับ ด้วยระบบการจัดการที่ได้มาตรฐานสากล",
-    href: "/calendar",
-    color: "text-dps-blue group-hover:bg-dps-blue",
-  },
-  {
     icon: Activity,
-    title: "วิเคราะห์ข้อมูล (Data Analytics)",
-    desc: "เจาะลึกสถิติและประสิทธิภาพการว่ายน้ำ (Distance Per Stroke) ด้วยเทคโนโลยี",
+    title: "ระบบวิเคราะห์ข้อมูล",
+    desc: "เจาะลึกสถิติและประสิทธิภาพการว่ายน้ำ (Distance Per Stroke) เปรียบเทียบ Pacing แบบ Multi-Event",
     href: "/analytics",
     color: "text-dps-cyan group-hover:bg-dps-cyan",
   },
   {
     icon: ShieldCheck,
-    title: "ผลการแข่งขัน",
-    desc: "ระบบรายงานผลการแข่งขัน พร้อม split times และการกรองข้อมูล",
+    title: "ระบบรายงานผลการแข่งขัน",
+    desc: "รายงานผลอย่างเป็นทางการ พร้อม Split Times, ตัวกรอง และไฮไลท์แถวเมื่อชี้เมาส์",
     href: "/results",
     color: "text-dps-navy group-hover:bg-dps-navy",
+  },
+  {
+    icon: Trophy,
+    title: "จัดการแข่งขัน",
+    desc: "รับจัดอีเวนต์และทัวร์นาเมนต์ว่ายน้ำทุกระดับ ด้วยระบบการจัดการที่ได้มาตรฐานสากล",
+    href: "/events",
+    color: "text-dps-blue group-hover:bg-dps-blue",
+  },
+  {
+    icon: Users,
+    title: "เอเจนซี่นักกีฬา",
+    desc: "ดูแลและส่งเสริมนักกีฬา ประสานงานสปอนเซอร์ สื่อ และโอกาสในเส้นทางอาชีพ",
+    href: "/agency",
+    color: "text-indigo-600 group-hover:bg-indigo-600",
+  },
+  {
+    icon: GraduationCap,
+    title: "การศึกษาต่อ & ทุนการศึกษา",
+    desc: "ให้คำปรึกษาและประสานงานเรียนต่อทั้งในและต่างประเทศ รวมทุนการศึกษากีฬา",
+    href: "/education",
+    color: "text-violet-600 group-hover:bg-violet-600",
+  },
+  {
+    icon: Camera,
+    title: "สื่อ & Portfolio",
+    desc: "ถ่ายภาพและวิดีโอเพื่อจัดทำ Profile และ Portfolio มืออาชีพสำหรับนักกีฬา",
+    href: "/media",
+    color: "text-rose-600 group-hover:bg-rose-600",
   },
 ];
 
@@ -58,7 +81,7 @@ export default async function HomePage() {
             <div className="mb-6 inline-block rounded-full border border-dps-cyan/30 bg-dps-cyan/20 px-4 py-1.5 text-sm font-semibold uppercase tracking-wide text-dps-cyan">
               Thailand&apos;s Premier Swimming Agency
             </div>
-            <h1 className="mb-6 text-4xl font-bold leading-tight text-white sm:text-5xl md:text-7xl">
+            <h1 className="mb-6 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl">
               <span className="whitespace-nowrap">ยกระดับศักยภาพนักว่ายน้ำ</span>
               <br />
               <span className="text-gradient">สู่เวทีระดับโลก</span>
@@ -106,23 +129,7 @@ export default async function HomePage() {
               </Link>
             ))}
 
-            <Card variant="muted" className="group p-8 lg:col-span-1">
-              <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm transition-colors group-hover:bg-indigo-600 group-hover:text-white">
-                  <GraduationCap className="h-8 w-8" />
-                </div>
-                <div>
-                  <h4 className="mb-2 text-xl font-bold text-slate-800">
-                    จัดหาทุนและสถานที่เรียนต่อต่างประเทศ
-                  </h4>
-                  <p className="max-w-2xl leading-relaxed text-slate-600">
-                    บริการให้คำปรึกษาและประสานงานจัดหาทุนการศึกษากีฬา (Sports Scholarship)
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Link href="/shop" className="lg:col-span-2">
+            <Link href="/shop" className="md:col-span-2 lg:col-span-3">
               <Card className="group relative flex h-full min-h-[200px] flex-col justify-center overflow-hidden bg-gradient-to-br from-dps-navy to-dps-blue p-8 text-white">
                 <ShoppingBag className="absolute -bottom-10 -right-10 h-64 w-64 opacity-10 transition-transform duration-500 group-hover:scale-110" />
                 <h4 className="font-bebas relative z-10 mb-2 text-3xl tracking-wide">

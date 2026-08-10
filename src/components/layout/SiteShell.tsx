@@ -21,9 +21,9 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <main
         className={cn(
           "min-h-screen",
-          !isHome && !isShop && "bg-slate-50 pt-20",
+          !isHome && !isShop && "bg-slate-50 pt-28",
           isHome && "pt-0",
-          isShop && "pt-20"
+          isShop && "pt-28"
         )}
       >
         {children}

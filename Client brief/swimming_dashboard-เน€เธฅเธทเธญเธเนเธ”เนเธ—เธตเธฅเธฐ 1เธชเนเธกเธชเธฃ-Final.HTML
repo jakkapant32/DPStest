@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายการแข่งขันว่ายน้ำ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); }
+        .multi-select-box { max-height: 150px; overflow-y: auto; padding-right: 4px; }
+    </style>
+</head>
+<body class="text-slate-800 p-4 md:p-8 min-h-screen">
+
+    <!-- Toast Notification (แทน alert) -->
+    <div id="toast" class="fixed top-5 right-5 transform translate-x-full opacity-0 transition-all duration-300 z-50 px-6 py-4 rounded-xl shadow-lg font-semibold flex items-center gap-3">
+        <span id="toast-icon"></span>
+        <span id="toast-message"></span>
+    </div>
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <header class="bg-white custom-shadow rounded-2xl p-6 border-t-4 border-blue-600 space-y-4 transition-all">
+            <div class="flex flex-col md:flex-row items-center gap-6 pb-4 border-b border-slate-100">
+                <!-- โลโก้ BlueHub -->
+                <img src="BlueHub-Logo-Minimal.jpg" alt="BlueHub Logo" class="h-12 md:h-16 object-contain" onerror="this.src='https://placehold.co/200x60/ffffff/1e3a8a?text=BlueHub+Logo'">
+                <div class="text-left border-l-2 border-slate-200 pl-6">
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-800">Swimming Data Analytics</h1>
+                    <p class="text-slate-500 text-sm mt-1">สามารถวิเคราะห์ข้อมูลจากไฟล์ CSV หรือเชื่อมต่อตรงจาก Google Sheets</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <!-- Option 1: เชื่อม Google Sheets -->
+                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex flex-col justify-center">
+                    <label class="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-1">
+                        🔗 โหลดข้อมูลจาก Google Sheets (Link CSV)
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="sheetUrlInput" placeholder="วางลิงก์ CSV จาก Publish to web ที่นี่..." 
+                            class="flex-1 rounded-lg border border-emerald-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <button id="loadUrlBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap">
+                            ดึงข้อมูล
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Option 2: อัปโหลดไฟล์ -->
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center">
+                    <label for="fileUpload" class="text-sm font-semibold text-blue-800 mb-2 block cursor-pointer">
+                        📂 อัปโหลดไฟล์แบบเดิม (.csv)
+                    </label>
+                    <input type="file" id="fileUpload" accept=".csv" 
+                        class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition cursor-pointer"
+                    />
+                </div>
+            </div>
+        </header>
+
+        <div id="welcomeState" class="bg-white custom-shadow rounded-2xl p-16 text-center border border-slate-200">
+            <div class="text-6xl mb-4 animate-bounce">📊</div>
+            <h2 class="text-2xl font-semibold text-slate-700 mb-2">ยังไม่มีข้อมูลแสดงผล</h2>
+            <p class="text-slate-500 max-w-md mx-auto">วางลิงก์จาก Google Sheets หรือ อัปโหลดไฟล์ CSV ด้านบนเพื่อเริ่มต้นวิเคราะห์ข้อมูล</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="dashboardContent" style="display: none;">
+            
+            <!-- Sidebar: ตัวกรอง -->
+            <div class="md:col-span-1 space-y-5">
+                
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5" id="genderFilterContainer">
+                    <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">🚻 เลือกเพศ</h3>
+                    <select id="genderSelect" class="w-full rounded-xl border border-slate-300 p-2.5 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-sm">
+                        <option value="All">ทั้งหมด (All Genders)</option>
+                    </select>
+                </div>
+
+                <!-- Multi-select: อายุ -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-slate-700 flex items-center gap-2">🎯 เลือกรุ่นอายุ</h3>
+                        <button id="selectAllAgeBtn" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded transition">สลับ</button>
+                    </div>
+                    <div id="ageFilterBox" class="multi-select-box space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner"></div>
+                </div>
+
+                <!-- Multi-select: สโมสร -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5" id="clubFilterContainer" style="display: none;">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-slate-700 flex items-center gap-2">🏫 เลือกสโมสร</h3>
+                        <button id="selectAllClubBtn" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded transition">สลับ</button>
+                    </div>
+                    <div id="clubFilterBox" class="multi-select-box space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner"></div>
+                </div>
+
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5">
+                    <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2">📈 รูปแบบกราฟ</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition border border-transparent hover:border-slate-200">
+                            <input type="radio" name="chartType" value="pace" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-slate-700">ความเร็วต่อช่วง (Pacing)</span>
+                        </label>
+                        <label class="flex items-center space-x-3 cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition border border-transparent hover:border-slate-200">
+                            <input type="radio" name="chartType" value="cumulative" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-slate-700">เวลาสะสมรวม (Cumulative)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Multi-select: นักกีฬา -->
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 flex flex-col h-[300px]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold text-slate-700 flex items-center gap-2">👤 เลือกนักกีฬา</h3>
+                        <button id="selectAllBtn" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded transition">สลับ</button>
+                    </div>
+                    <div id="swimmerList" class="flex-1 overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner"></div>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 flex flex-col space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 border-l-4 border-l-emerald-500 hover:-translate-y-1 transition-transform">
+                        <p class="text-sm text-slate-500 font-medium mb-1">นักกีฬาที่แสดงผล</p>
+                        <p id="statCount" class="text-3xl font-bold text-slate-800">0 <span class="text-base font-normal text-slate-500">คน</span></p>
+                    </div>
+                    <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 border-l-4 border-l-blue-500 hover:-translate-y-1 transition-transform">
+                        <p class="text-sm text-slate-500 font-medium mb-1">เวลาจบที่ดีที่สุด</p>
+                        <p id="statBestTime" class="text-3xl font-bold text-slate-800">-</p>
+                    </div>
+                    <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-5 border-l-4 border-l-purple-500 hover:-translate-y-1 transition-transform">
+                        <p class="text-sm text-slate-500 font-medium mb-1">ความเร็วเฉลี่ย (Pace)</p>
+                        <p id="statAvgPace" class="text-3xl font-bold text-slate-800">-</p>
+                    </div>
+                </div>
+
+                <div class="bg-white custom-shadow border border-slate-200 rounded-2xl p-4 md:p-6 flex-1 flex flex-col">
+                    <div id="chartContainer" class="w-full flex-1 min-h-[500px]"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let globalData = [];
+        let distances = [];
+        let currentChartType = 'pace';
+        let hasGenderData = false;
+        let hasClubData = false; 
+        let finalDistance = ""; 
+
+        function timeToSeconds(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return null;
+            let str = timeStr.trim();
+            if (str === "" || str === "-") return null;
+            let parts = str.split(':');
+            if (parts.length === 2) return parseInt(parts[0]) * 60 + parseFloat(parts[1]); 
+            else if (parts.length === 1) return parseFloat(parts[0]);
+            return null;
+        }
+
+        function formatTime(totalSeconds) {
+            if (totalSeconds === null || isNaN(totalSeconds) || !isFinite(totalSeconds)) return "-";
+            let m = Math.floor(totalSeconds / 60);
+            let s = (totalSeconds % 60).toFixed(2);
+            if (s < 10) s = "0" + s;
+            return m > 0 ? `${m}:${s}` : `${s}`;
+        }
+
+        function showToast(message, type = 'error') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            toastMsg.innerText = message;
+            if(type === 'error') {
+                toast.className = "fixed top-5 right-5 transform transition-transform duration-300 z-50 px-6 py-4 rounded-xl shadow-lg font-semibold flex items-center gap-3 bg-red-100 text-red-800 border-l-4 border-red-600";
+                toastIcon.innerText = "❌";
+            } else {
+                toast.className = "fixed top-5 right-5 transform transition-transform duration-300 z-50 px-6 py-4 rounded-xl shadow-lg font-semibold flex items-center gap-3 bg-emerald-100 text-emerald-800 border-l-4 border-emerald-600";
+                toastIcon.innerText = "✅";
+            }
+            
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        document.getElementById('loadUrlBtn').addEventListener('click', function() {
+            let url = document.getElementById('sheetUrlInput').value.trim();
+            if(!url) { showToast("กรุณาวางลิงก์ Google Sheets หรือ CSV ก่อนครับ", "error"); return; }
+            let btn = document.getElementById('loadUrlBtn');
+            let originalText = btn.innerText;
+            btn.innerText = "กำลังดึงข้อมูล...";
+            
+            Papa.parse(url, {
+                download: true, header: true, skipEmptyLines: true,
+                complete: function(results) { 
+                    btn.innerText = originalText; 
+                    showToast("โหลดข้อมูลสำเร็จ!", "success");
+                    processData(results.data); 
+                },
+                error: function(err) { 
+                    btn.innerText = originalText; 
+                    showToast("ดึงข้อมูลไม่สำเร็จ: " + err.message, "error"); 
+                }
+            });
+        });
+
+        document.getElementById('fileUpload').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(results) { 
+                showToast("โหลดข้อมูลสำเร็จ!", "success");
+                processData(results.data); 
+            } });
+        });
+
+        function processData(data) {
+            if (data.length === 0) { showToast("ไม่พบข้อมูลในไฟล์", "error"); return; }
+            
+            let cols = Object.keys(data[0]);
+            distances = cols.filter(col => col.trim().match(/^\d+m$/i)).sort((a, b) => parseInt(a) - parseInt(b));
+
+            if(distances.length === 0) { showToast("ไม่พบคอลัมน์ระยะทาง (เช่น 50m, 100m)", "error"); return; }
+            finalDistance = distances[distances.length - 1];
+
+            hasGenderData = false;
+            hasClubData = cols.some(k => k.toLowerCase() === 'สโมสร' || k.toLowerCase() === 'club'); 
+
+            globalData = data.map(row => {
+                let processed = { ...row };
+                let cumulative = {};
+                let pace = {};
+
+                distances.forEach((d, index) => {
+                    let sec = timeToSeconds(row[d]);
+                    cumulative[d] = sec;
+                    if (sec !== null) {
+                        if (index === 0) { pace[d] = sec; } 
+                        else {
+                            let prevD = distances[index - 1];
+                            let prevSec = timeToSeconds(row[prevD]);
+                            if (prevSec !== null && sec >= prevSec) pace[d] = parseFloat((sec - prevSec).toFixed(2));
+                            else pace[d] = null;
+                        }
+                    } else pace[d] = null;
+                });
+
+                processed._cumulative = cumulative;
+                processed._pace = pace;
+                processed['รุ่นอายุ'] = row['รุ่นอายุ'] ? row['รุ่นอายุ'].trim() : 'Unknown';
+                
+                const nameKey = Object.keys(row).find(k => k.includes('ชื่อ') || k.toLowerCase().includes('name'));
+                processed['ชื่อ-นามสกุล'] = nameKey && row[nameKey] ? row[nameKey].trim() : 'Unknown';
+                
+                const genderKey = Object.keys(row).find(k => k.toLowerCase() === 'gender' || k === 'เพศ');
+                if(genderKey && row[genderKey]) { processed['_gender'] = row[genderKey].trim(); hasGenderData = true; } 
+                else processed['_gender'] = 'Unknown';
+                
+                const clubKey = Object.keys(row).find(k => k.toLowerCase() === 'สโมสร' || k.toLowerCase() === 'club');
+                if(clubKey && row[clubKey]) processed['_club'] = row[clubKey].trim();
+                else processed['_club'] = 'Unknown';
+
+                return processed;
+            });
+
+            document.getElementById('welcomeState').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'grid';
+            document.getElementById('genderFilterContainer').style.display = hasGenderData ? 'block' : 'none';
+            document.getElementById('clubFilterContainer').style.display = hasClubData ? 'block' : 'none';
+
+            populateGenders();
+            populateAgesMulti();
+            populateClubsMulti();
+            populateSwimmers();
+            updateDashboard();
+        }
+
+        function populateGenders() {
+            let genderSelect = document.getElementById('genderSelect');
+            let genders = [...new Set(globalData.map(d => d['_gender']))].filter(g => g !== 'Unknown').sort();
+            genderSelect.innerHTML = '<option value="All">ทั้งหมด (All Genders)</option>';
+            genders.forEach(g => {
+                let opt = document.createElement('option');
+                opt.value = g;
+                let label = g;
+                if(g.toUpperCase() === 'M' || g === 'ชาย') label = 'ชาย (Male)';
+                if(g.toUpperCase() === 'F' || g === 'หญิง') label = 'หญิง (Female)';
+                opt.innerText = label;
+                genderSelect.appendChild(opt);
+            });
+        }
+
+        function populateAgesMulti() {
+            let ageBox = document.getElementById('ageFilterBox');
+            let ages = [...new Set(globalData.map(d => d['รุ่นอายุ']))].filter(a => a !== 'Unknown').sort();
+            ageBox.innerHTML = '';
+            ages.forEach(age => {
+                let label = document.createElement('label');
+                label.className = "flex items-center space-x-3 p-1.5 hover:bg-blue-50 rounded cursor-pointer transition";
+                label.innerHTML = `<input type="checkbox" value="${age}" class="age-checkbox w-4 h-4 text-blue-600 rounded cursor-pointer" checked>
+                                   <span class="text-sm text-slate-700 select-none">${age}</span>`;
+                label.querySelector('input').addEventListener('change', () => { populateSwimmers(); updateDashboard(); });
+                ageBox.appendChild(label);
+            });
+        }
+
+        function populateClubsMulti() {
+            if(!hasClubData) return;
+            let clubBox = document.getElementById('clubFilterBox');
+            let clubs = [...new Set(globalData.map(d => d['_club']))].filter(c => c !== 'Unknown' && c !== '').sort();
+            clubBox.innerHTML = '';
+            clubs.forEach(c => {
+                let label = document.createElement('label');
+                label.className = "flex items-center space-x-3 p-1.5 hover:bg-blue-50 rounded cursor-pointer transition";
+                label.innerHTML = `<input type="checkbox" value="${c}" class="club-checkbox w-4 h-4 text-blue-600 rounded cursor-pointer" checked>
+                                   <span class="text-sm text-slate-700 truncate select-none" title="${c}">${c}</span>`;
+                label.querySelector('input').addEventListener('change', () => { populateSwimmers(); updateDashboard(); });
+                clubBox.appendChild(label);
+            });
+        }
+
+        function populateSwimmers() {
+            let selectedGender = hasGenderData ? document.getElementById('genderSelect').value : 'All';
+            let selectedAges = Array.from(document.querySelectorAll('.age-checkbox:checked')).map(cb => cb.value);
+            let selectedClubs = hasClubData ? Array.from(document.querySelectorAll('.club-checkbox:checked')).map(cb => cb.value) : [];
+
+            // เก็บสถานะการติ๊กของนักกีฬาเดิมไว้
+            let existChecked = Array.from(document.querySelectorAll('.swimmer-checkbox:checked')).map(cb => cb.value);
+            let swimmerListDiv = document.getElementById('swimmerList');
+            swimmerListDiv.innerHTML = '';
+
+            let filteredSwimmers = globalData.filter(d => {
+                let matchGender = true; let matchAge = true; let matchClub = true;
+
+                if (hasGenderData && selectedGender !== 'All') {
+                    let g = d['_gender'].toUpperCase(); let sel = selectedGender.toUpperCase();
+                    matchGender = (g === sel || (sel === 'M' && g === 'ชาย') || (sel === 'F' && g === 'หญิง') || d['_gender'] === selectedGender);
+                }
+                
+                if (selectedAges.length > 0) matchAge = selectedAges.includes(d['รุ่นอายุ']);
+                else matchAge = false;
+
+                if (hasClubData) {
+                    if (selectedClubs.length > 0) matchClub = selectedClubs.includes(d['_club']);
+                    else matchClub = false;
+                }
+
+                return matchGender && matchAge && matchClub;
+            });
+
+            let names = [...new Set(filteredSwimmers.map(d => d['ชื่อ-นามสกุล']))].sort();
+            names.forEach(name => {
+                // ถ้านี่คือการโหลดครั้งแรก (existChecked วางเปล่า) ให้ติ๊กหมด, แต่ถ้าเคยเลือกไว้ ให้จำค่าเดิม
+                let isChecked = existChecked.length === 0 || existChecked.includes(name) ? 'checked' : '';
+                
+                let label = document.createElement('label');
+                label.className = "flex items-center space-x-3 p-1.5 hover:bg-blue-50 rounded-lg cursor-pointer transition border border-transparent";
+                label.innerHTML = `<input type="checkbox" value="${name}" class="swimmer-checkbox w-4 h-4 text-blue-600 rounded cursor-pointer" ${isChecked}>
+                                   <span class="text-sm text-slate-700 truncate select-none">${name}</span>`;
+                label.querySelector('input').addEventListener('change', updateDashboard);
+                swimmerListDiv.appendChild(label);
+            });
+        }
+
+        document.getElementById('genderSelect').addEventListener('change', () => { populateSwimmers(); updateDashboard(); });
+        
+        document.querySelectorAll('input[name="chartType"]').forEach(radio => {
+            radio.addEventListener('change', function() { currentChartType = this.value; updateDashboard(); });
+        });
+
+        const toggleAll = (selector) => {
+            let cbs = document.querySelectorAll(selector);
+            let state = !Array.from(cbs).every(c => c.checked);
+            cbs.forEach(c => c.checked = state);
+        };
+
+        document.getElementById('selectAllAgeBtn').addEventListener('click', () => { toggleAll('.age-checkbox'); populateSwimmers(); updateDashboard(); });
+        document.getElementById('selectAllClubBtn').addEventListener('click', () => { toggleAll('.club-checkbox'); populateSwimmers(); updateDashboard(); });
+        document.getElementById('selectAllBtn').addEventListener('click', () => { toggleAll('.swimmer-checkbox'); updateDashboard(); });
+
+        function updateDashboard() {
+            let selectedCheckboxes = document.querySelectorAll('.swimmer-checkbox:checked');
+            let selectedNames = Array.from(selectedCheckboxes).map(c => c.value);
+            let filteredData = globalData.filter(d => selectedNames.includes(d['ชื่อ-นามสกุล']));
+
+            document.getElementById('statCount').innerHTML = `${filteredData.length} <span class="text-base font-normal text-slate-500">คน</span>`;
+
+            // ดึงระยะทางไกลสุดอัตโนมัติ ไม่จำกัดแค่ 1500m
+            let bestTimeSec = Math.min(...filteredData.map(d => d._cumulative[finalDistance] || Infinity));
+            document.getElementById('statBestTime').innerText = bestTimeSec !== Infinity ? formatTime(bestTimeSec) : '-';
+
+            let allPaces = filteredData.flatMap(d => Object.values(d._pace).filter(v => v !== null));
+            if (allPaces.length > 0) {
+                let avgPace = allPaces.reduce((a, b) => a + b, 0) / allPaces.length;
+                document.getElementById('statAvgPace').innerText = formatTime(avgPace);
+            } else {
+                document.getElementById('statAvgPace').innerText = '-';
+            }
+
+            let traces = filteredData.map(swimmer => {
+                let yData = [];
+                let hoverTexts = [];
+                let isPace = currentChartType === 'pace';
+                let swimmerName = swimmer['ชื่อ-นามสกุล'];
+
+                distances.forEach(d => {
+                    let val = isPace ? swimmer._pace[d] : swimmer._cumulative[d];
+                    yData.push(val);
+                    hoverTexts.push(`<b>ระยะ:</b> ${d}<br><b>เวลา:</b> ${formatTime(val)}`);
+                });
+
+                return {
+                    x: distances.map(d => parseInt(d)),
+                    y: yData,
+                    name: swimmerName,
+                    mode: 'lines+markers',
+                    text: hoverTexts,
+                    // แก้ไข: ใช้ตัวแปร swimmerName ตรงๆ ใน template แทน %{name}
+                    hovertemplate: `<b>${swimmerName}</b><br>%{text}<extra></extra>`,
+                    line: { shape: 'spline', smoothing: 0.4, width: 2.5 },
+                    marker: { size: 6, symbol: 'circle' }
+                };
+            });
+
+            let allY = traces.flatMap(t => t.y.filter(v => v !== null));
+            let maxY = Math.max(...allY, 0);
+            let minY = Math.max(Math.min(...allY, 0), 0);
+            let step = currentChartType === 'pace' ? 5 : (maxY > 600 ? 120 : 60);
+            
+            if (currentChartType === 'pace') {
+                minY = Math.floor(Math.min(...allY) / 5) * 5; 
+                if(isNaN(minY) || !isFinite(minY)) minY = 20;
+            } else {
+                minY = 0;
+            }
+
+            let tickVals = [];
+            let tickTexts = [];
+            for(let i = minY; i <= maxY + step; i += step) {
+                tickVals.push(i);
+                tickTexts.push(formatTime(i));
+            }
+
+            let layout = {
+                title: { 
+                    text: currentChartType === 'pace' ? 'กราฟวิเคราะห์ความเร็ว (Pace ต่อช่วง)' : 'กราฟวิเคราะห์เวลาสะสม (Cumulative Time)', 
+                    font: { size: 18, family: 'Inter', color: '#1e293b' },
+                    y: 0.95
+                },
+                xaxis: { 
+                    title: { text: 'ระยะทาง (เมตร)', font: { color: '#64748b' } },
+                    tickvals: distances.map(d => parseInt(d)), 
+                    gridcolor: '#f1f5f9',
+                    zeroline: false
+                },
+                yaxis: {
+                    title: { text: currentChartType === 'pace' ? 'เวลา (นาที:วินาที)' : 'เวลารวม (นาที:วินาที)', font: { color: '#64748b' } },
+                    tickmode: 'array',
+                    tickvals: tickVals,
+                    ticktext: tickTexts,
+                    gridcolor: '#f1f5f9',
+                    zerolinecolor: '#e2e8f0'
+                },
+                plot_bgcolor: 'white',
+                paper_bgcolor: 'white',
+                // แก้ไข: เปลี่ยน hovermode เป็น closest เพื่อให้เลือกทีละจุดได้ง่ายขึ้นสำหรับ Highlight
+                hovermode: 'closest',
+                margin: { t: 60, l: 70, r: 20, b: 80 },
+                legend: { orientation: 'h', y: -0.2, font: { family: 'Inter', size: 12, color: '#475569' } }
+            };
+
+            let config = { responsive: true, displayModeBar: false };
+            let chartDiv = document.getElementById('chartContainer');
+            
+            Plotly.newPlot(chartDiv, traces, layout, config);
+
+            // เคลียร์ Event เดิมทิ้งก่อนเพื่อป้องกันบั๊ก
+            if(chartDiv.removeAllListeners) {
+                chartDiv.removeAllListeners('plotly_hover');
+                chartDiv.removeAllListeners('plotly_unhover');
+            }
+
+            // เพิ่ม Event: Hover Highlight (เมื่อชี้เส้นใดเส้นหนึ่ง)
+            chartDiv.on('plotly_hover', function(data){
+                let curveNum = data.points[0].curveNumber; // ดึงหมายเลขเส้นที่ถูกชี้
+                let numTraces = chartDiv.data.length;
+                
+                let opacities = [];
+                let lineSizes = [];
+                
+                for(let i = 0; i < numTraces; i++){
+                    if(i === curveNum){
+                        opacities.push(1);       // เส้นที่ชี้ โชว์ชัด 100%
+                        lineSizes.push(4.5);     // ขยายเส้นให้หนาขึ้น
+                    } else {
+                        opacities.push(0.15);    // เส้นอื่นจางลงเหลือ 15%
+                        lineSizes.push(2.5);     // ขนาดเส้นปกติ
+                    }
+                }
+                // สั่งอัปเดตกราฟ (Restyle) ทันที
+                Plotly.restyle(chartDiv, { opacity: opacities, 'line.width': lineSizes });
+            });
+
+            // เพิ่ม Event: Unhover (เมื่อเอาเมาส์ออก คืนค่าปกติ)
+            chartDiv.on('plotly_unhover', function(data){
+                let numTraces = chartDiv.data.length;
+                let opacities = [];
+                let lineSizes = [];
+                
+                for(let i = 0; i < numTraces; i++){
+                    opacities.push(1);       // คืนค่าความชัด 100% ทุกเส้น
+                    lineSizes.push(2.5);     // คืนค่าขนาดเส้นปกติ
+                }
+                // สั่งอัปเดตกราฟ (Restyle) ทันที
+                Plotly.restyle(chartDiv, { opacity: opacities, 'line.width': lineSizes });
+            });
+        }
+    </script>
+</body>
+</html>

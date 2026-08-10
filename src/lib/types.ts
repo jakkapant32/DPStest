@@ -5,11 +5,12 @@ export const siteConfig = {
   description:
     "DPS ผู้เชี่ยวชาญด้านกีฬาว่ายน้ำแบบครบวงจร — จัดการแข่งขัน วิเคราะห์ข้อมูล และสปอร์ตแฟชั่น",
   nav: [
-    { href: "/calendar", label: "ปฏิทินการแข่งขัน", labelEn: "Calendar" },
-    { href: "/results", label: "ผลการแข่งขัน", labelEn: "Results" },
-    { href: "/analytics", label: "วิเคราะห์ข้อมูล", labelEn: "Data Analytics" },
+    { href: "/events", label: "จัดการแข่งขัน", labelEn: "Events" },
+    { href: "/analytics", label: "วิเคราะห์ข้อมูล", labelEn: "Analytics" },
+    { href: "/agency", label: "เอเจนซี่นักกีฬา", labelEn: "Agency" },
+    { href: "/education", label: "การศึกษา & ทุน", labelEn: "Education" },
+    { href: "/media", label: "สื่อ & Portfolio", labelEn: "Media" },
     { href: "/shop", label: "สปอร์ตแฟชั่น", labelEn: "Store" },
-    { href: "/about", label: "เกี่ยวกับเรา", labelEn: "About Us" },
   ],
 };
 

@@ -75,8 +75,8 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="hero-bg clip-slant relative flex min-h-[600px] h-[85vh] items-center">
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+      <section className="hero-bg hero-full-bleed clip-slant relative flex min-h-screen h-screen items-center overflow-hidden">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-28 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <div className="mb-6 inline-block rounded-full border border-dps-cyan/30 bg-dps-cyan/20 px-4 py-1.5 text-sm font-semibold uppercase tracking-wide text-dps-cyan">
               Thailand&apos;s Premier Swimming Agency

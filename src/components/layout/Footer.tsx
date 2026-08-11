@@ -10,7 +10,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-12 grid grid-cols-1 gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <Logo variant="light" showTagline={false} size="md" className="mb-6" />
+            <Logo variant="light" showTagline={false} size="lg" className="mb-6" />
             <p className="mb-6 leading-relaxed text-slate-400">{siteConfig.description}</p>
             <div className="flex gap-4">
               {[Facebook, Instagram, Youtube].map((Icon, i) => (

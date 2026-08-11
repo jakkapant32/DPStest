@@ -26,15 +26,29 @@ export function Logo({
 
   return (
     <Link href="/" className={cn("group flex items-center", className)}>
-      <Image
-        src="/logo/dps-logo.png"
-        alt="DPS — Distance Per Stroke"
-        width={Math.round(height * 2.8)}
-        height={height}
-        className="-mr-6 h-auto w-auto transition-transform group-hover:scale-[1.02]"
-        style={{ height, width: "auto" }}
-        priority
-      />
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center",
+          variant === "light" &&
+            cn(
+              "rounded-md border border-white/25 bg-white/15 px-2 py-1 shadow-sm backdrop-blur-lg",
+              size === "lg" && "px-2.5 py-1.5"
+            )
+        )}
+      >
+        <Image
+          src="/logo/dps-logo.png"
+          alt="DPS — Distance Per Stroke"
+          width={Math.round(height * 2.8)}
+          height={height}
+          className={cn(
+            "h-auto w-auto transition-transform group-hover:scale-[1.02]",
+            variant === "light" ? "mr-0 drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]" : "-mr-6"
+          )}
+          style={{ height, width: "auto" }}
+          priority
+        />
+      </span>
       {showTagline && size !== "sm" && (
         <div
           className={cn(

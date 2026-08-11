@@ -3,7 +3,6 @@ import {
   BarChart3,
   Building2,
   Building,
-  FileSpreadsheet,
   Layers,
 } from "lucide-react";
 
@@ -17,14 +16,6 @@ export interface AnalyticsTool {
 }
 
 export const analyticsTools: AnalyticsTool[] = [
-  {
-    href: "/analytics/results",
-    title: "รายงานผลการแข่งขัน",
-    tabLabel: "รายงานผล",
-    description:
-      "Official Results Report — ตารางผลแข่งขัน Split Times ตัวกรอง และไฮไลท์แถวเมื่อชี้เมาส์",
-    icon: FileSpreadsheet,
-  },
   {
     href: "/analytics/single-club",
     title: "วิเคราะห์ข้อมูล (ทีละ 1 สโมสร)",

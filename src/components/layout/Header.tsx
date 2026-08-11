@@ -12,40 +12,39 @@ import { EventsNavDropdown } from "./EventsNavDropdown";
 export function Header() {
   const currentPath = usePathname();
 
+  const navLinkClass = (href: string) =>
+    cn(
+      "whitespace-nowrap text-base font-medium transition-colors",
+      currentPath === href || currentPath.startsWith(href + "/")
+        ? "text-dps-cyan"
+        : "text-slate-600 hover:text-dps-cyan"
+    );
+
   return (
     <header className="fixed z-50 w-full border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-md transition-all duration-300">
-      <div className="mx-auto flex h-28 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Logo size="lg" />
+      <div className="mx-auto flex h-28 w-full max-w-[1600px] items-center gap-4 px-4 sm:px-5 lg:gap-6 lg:px-6 xl:px-8">
+        <Logo size="lg" className="shrink-0" />
 
-        <nav className="hidden items-center gap-4 lg:flex xl:gap-5">
+        <nav className="hidden min-w-0 flex-1 flex-nowrap items-center justify-center gap-3 lg:flex xl:gap-4">
           {siteConfig.nav.map((item) =>
             item.href === "/analytics" ? (
               <AnalyticsNavDropdown key={item.href} />
             ) : item.href === "/events" ? (
               <EventsNavDropdown key={item.href} />
             ) : (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "text-sm font-medium transition-colors xl:text-base",
-                  currentPath === item.href ||
-                    currentPath.startsWith(item.href + "/")
-                    ? "text-dps-cyan"
-                    : "text-slate-600 hover:text-dps-cyan"
-                )}
-              >
+              <Link key={item.href} href={item.href} className={navLinkClass(item.href)}>
                 {item.label}
               </Link>
             )
           )}
-          <Link
-            href="/about"
-            className="rounded-full bg-dps-navy px-6 py-2.5 font-medium text-white shadow-md transition-all hover:bg-dps-blue hover:shadow-lg"
-          >
-            ติดต่อเรา
-          </Link>
         </nav>
+
+        <Link
+          href="/about"
+          className="hidden shrink-0 whitespace-nowrap rounded-full bg-dps-navy px-5 py-2.5 text-base font-medium text-white shadow-md transition-all hover:bg-dps-blue hover:shadow-lg lg:inline-flex xl:px-6"
+        >
+          ติดต่อเรา
+        </Link>
 
         <MobileNav currentPath={currentPath} />
       </div>

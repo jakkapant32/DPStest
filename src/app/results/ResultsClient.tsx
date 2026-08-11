@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState, Fragment } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { ChevronDown, Loader2, Upload } from "lucide-react";
 import { Card, Button, SectionHeader } from "@/components/ui/Card";
 import { MedalIcon } from "@/components/ui/MedalIcon";
 import { cn } from "@/lib/utils";
-import { fetchCSVFromUrl } from "@/lib/analytics";
+import { fetchCSVFromUrl, RESULTS_SAMPLE } from "@/lib/analytics";
 import {
   getRankStyle,
   parseResultsCSV,
@@ -30,6 +30,12 @@ function mockToParsed(results: RaceResult[]): ParsedResultRow[] {
   }));
 }
 
+function getDefaultEventId(events: SwimEvent[], results: RaceResult[]): string {
+  const completed = events.filter((e) => e.status === "completed");
+  const withResults = completed.find((e) => results.some((r) => r.eventId === e.id));
+  return withResults?.id ?? completed[0]?.id ?? events[0]?.id ?? "";
+}
+
 export function ResultsClient({
   initialEvents,
   initialResults,
@@ -38,7 +44,7 @@ export function ResultsClient({
   initialResults: RaceResult[];
 }) {
   const [selectedEvent, setSelectedEvent] = useState(
-    initialEvents.find((e) => e.status === "completed")?.id ?? initialEvents[0]?.id ?? ""
+    getDefaultEventId(initialEvents, initialResults)
   );
   const [csvRows, setCsvRows] = useState<ParsedResultRow[] | null>(null);
   const [distances, setDistances] = useState<string[]>(["50m", "100m", "150m"]);
@@ -102,6 +108,29 @@ export function ResultsClient({
     setClubFilter("All");
     setError(null);
   }, []);
+
+  const loadSample = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(RESULTS_SAMPLE.path);
+      if (!res.ok) throw new Error("โหลดไฟล์ตัวอย่างไม่สำเร็จ");
+      loadCsv(await res.text());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "โหลดตัวอย่างไม่สำเร็จ");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadCsv]);
+
+  const didAutoLoadSample = useRef(false);
+
+  useEffect(() => {
+    if (!didAutoLoadSample.current) {
+      didAutoLoadSample.current = true;
+      loadSample();
+    }
+  }, [loadSample]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,6 +205,17 @@ export function ResultsClient({
         </div>
 
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadSample}
+            disabled={loading}
+            className="rounded-full bg-dps-navy/10 px-4 py-1.5 text-sm font-medium text-dps-navy transition hover:bg-dps-navy hover:text-white disabled:opacity-50"
+          >
+            {loading ? "กำลังโหลด..." : `โหลด ${RESULTS_SAMPLE.label}`}
+          </button>
+        </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-4">
           {!usingCsv && (
@@ -284,31 +324,59 @@ export function ResultsClient({
                         key={row.id}
                         className={cn(
                           "group cursor-pointer border-b border-slate-100 transition-all duration-200",
-                          style.row,
-                          isDimmed && "opacity-35 blur-[0.4px]",
+                          !style.isPodium && "bg-white hover:bg-slate-50",
+                          isDimmed && !style.isPodium && "opacity-35 blur-[0.4px]",
+                          isDimmed && style.isPodium && "opacity-80 blur-none",
                           isHovered && "relative z-10 scale-[1.01] opacity-100 blur-none shadow-md"
                         )}
                         onMouseEnter={() => setHoveredId(row.id)}
                         onClick={() => setExpandedId(isExpanded ? null : row.id)}
                       >
-                        <td className={cn("px-6 py-4 text-center text-base font-bold", style.rank)}>
+                        <td
+                          style={{ ...style.rowCellStyle, ...style.rankTextStyle }}
+                          className={cn(
+                            "px-6 py-4 text-center text-base",
+                            !style.isPodium && "font-bold text-slate-700",
+                            style.isPodium && "text-lg"
+                          )}
+                        >
                           {rank}
                         </td>
-                        <td className={cn("px-6 py-4 text-base font-semibold", style.name, isHovered && "font-bold")}>
-                          <span className="inline-flex items-center gap-2">
-                            {style.medal && <MedalIcon rank={style.medal} />}
+                        <td
+                          style={style.rowCellStyle}
+                          className="px-6 py-4 text-base font-semibold text-dps-navy"
+                        >
+                          <span className="inline-flex items-center gap-2.5">
+                            {style.medal && <MedalIcon rank={style.medal} className="h-8" />}
                             {row.name}
                           </span>
                         </td>
-                        <td className="hidden px-6 py-4 text-slate-500 md:table-cell">{row.gender}</td>
-                        <td className="hidden px-6 py-4 text-slate-500 sm:table-cell">{row.ageGroup}</td>
-                        <td className="max-w-[200px] truncate px-6 py-4 text-slate-600" title={row.club}>
+                        <td
+                          style={style.rowCellStyle}
+                          className="hidden px-6 py-4 text-slate-500 md:table-cell"
+                        >
+                          {row.gender}
+                        </td>
+                        <td
+                          style={style.rowCellStyle}
+                          className="hidden px-6 py-4 text-slate-500 sm:table-cell"
+                        >
+                          {row.ageGroup}
+                        </td>
+                        <td
+                          style={style.rowCellStyle}
+                          className="max-w-[200px] truncate px-6 py-4 text-slate-600"
+                          title={row.club}
+                        >
                           {row.club}
                         </td>
-                        <td className="px-6 py-4 text-right font-mono text-base font-bold text-slate-800">
+                        <td
+                          style={style.rowCellStyle}
+                          className="px-6 py-4 text-right font-mono text-base font-bold text-slate-800"
+                        >
                           {row.finalTimeStr}
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td style={style.rowCellStyle} className="px-4 py-4 text-center">
                           <ChevronDown
                             className={cn(
                               "inline h-5 w-5 text-slate-400 transition-transform group-hover:text-dps-cyan",

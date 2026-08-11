@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface LogoProps {
   variant?: "light" | "dark";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "header";
   showTagline?: boolean;
   className?: string;
 }
@@ -13,6 +13,7 @@ const logoHeights = {
   sm: 36,
   md: 48,
   lg: 96,
+  header: 64,
 };
 
 export function Logo({

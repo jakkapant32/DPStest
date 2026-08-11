@@ -182,6 +182,42 @@ export function computeStats(records: SwimRecord[]) {
   return { count: records.length, bestTime, avgPace };
 }
 
+const Y_AXIS_STEP = 5;
+
+/** Y-axis ticks every 5 units so pacing differences are easier to read. */
+export function getChartYAxisConfig(
+  chartData: { distance: number; [key: string]: number | string }[],
+  seriesKeys: string[]
+): { domain: [number, number]; ticks: number[] } {
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const point of chartData) {
+    for (const key of seriesKeys) {
+      const value = point[key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+    }
+  }
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    const ticks: number[] = [];
+    for (let t = 0; t <= 60; t += Y_AXIS_STEP) ticks.push(t);
+    return { domain: [0, 60], ticks };
+  }
+
+  const domainMin = Math.floor(min / Y_AXIS_STEP) * Y_AXIS_STEP;
+  const domainMax = Math.ceil(max / Y_AXIS_STEP) * Y_AXIS_STEP;
+  const ticks: number[] = [];
+  for (let t = domainMin; t <= domainMax; t += Y_AXIS_STEP) {
+    ticks.push(t);
+  }
+
+  return { domain: [domainMin, domainMax], ticks };
+}
+
 export const CHART_COLORS = [
   "#06B6D4",
   "#1E3A8A",
@@ -202,4 +238,9 @@ export const SAMPLE_FILES = {
     label: "1500M หญิง (ตัวอย่าง)",
     path: "/sample-data/1500M-F-v2.csv",
   },
+} as const;
+
+export const RESULTS_SAMPLE = {
+  label: "ผลการแข่งขัน (ตัวอย่าง)",
+  path: "/sample-data/results-sample.csv",
 } as const;

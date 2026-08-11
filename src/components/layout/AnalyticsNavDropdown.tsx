@@ -50,7 +50,7 @@ export function AnalyticsNavDropdown({ compact }: { compact?: boolean }) {
       <Link
         href="/analytics"
         className={cn(
-          "inline-flex items-center gap-1 text-sm font-medium transition-colors xl:text-base",
+          "inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-base font-medium transition-colors",
           isActive ? "text-dps-cyan" : "text-slate-600 hover:text-dps-cyan"
         )}
       >

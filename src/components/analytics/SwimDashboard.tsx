@@ -13,15 +13,17 @@ import {
 } from "recharts";
 import { Loader2, Upload, Link2, ChartLine } from "lucide-react";
 import { Card, StatCard, Button } from "@/components/ui/Card";
-import { formatSwimTime } from "@/lib/utils";
+import { cn, formatSwimTime } from "@/lib/utils";
 import {
   CHART_COLORS,
   computeStats,
   fetchCSVFromUrl,
+  getChartYAxisConfig,
   getPaceData,
   parseCSVToRecords,
 } from "@/lib/analytics";
 import type { SwimRecord } from "@/lib/types";
+import { ChartFocusTooltip } from "./ChartFocusTooltip";
 
 export type DashboardMode = "single-club" | "multi-club" | "multi-event";
 
@@ -46,6 +48,9 @@ function toggleAll(list: string[], all: string[]): string[] {
   return list.length === all.length ? [] : [...all];
 }
 
+const DEFAULT_CHART_ATHLETES = 8;
+const MAX_LEGEND_ATHLETES = 12;
+
 export function SwimDashboard({
   mode,
   title,
@@ -66,6 +71,9 @@ export function SwimDashboard({
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"pacing" | "cumulative">("pacing");
   const [hoveredAthlete, setHoveredAthlete] = useState<string | null>(null);
+  const [lockedAthlete, setLockedAthlete] = useState<string | null>(null);
+
+  const focusAthlete = lockedAthlete ?? hoveredAthlete;
 
   const hasData = records.length > 0;
 
@@ -128,7 +136,7 @@ export function SwimDashboard({
 
   useEffect(() => {
     if (allAthletesInPool.length && selectedAthletes.length === 0) {
-      setSelectedAthletes([...allAthletesInPool]);
+      setSelectedAthletes(allAthletesInPool.slice(0, DEFAULT_CHART_ATHLETES));
     }
   }, [allAthletesInPool, selectedAthletes.length]);
 
@@ -141,6 +149,10 @@ export function SwimDashboard({
   const chartData = useMemo(
     () => getPaceData(filteredRecords, chartMode),
     [filteredRecords, chartMode]
+  );
+  const yAxis = useMemo(
+    () => getChartYAxisConfig(chartData, filteredRecords.map((r) => r.athlete)),
+    [chartData, filteredRecords]
   );
 
   const loadCsvText = useCallback(
@@ -156,6 +168,8 @@ export function SwimDashboard({
         setClubs([]);
         setSelectedAthletes([]);
         setDatasetTags(tag ? [tag] : []);
+        setHoveredAthlete(null);
+        setLockedAthlete(null);
       }
       setError(null);
     },
@@ -201,7 +215,7 @@ export function SwimDashboard({
     }
   };
 
-  const loadSample = async (sample: SampleFile) => {
+  const loadSample = useCallback(async (sample: SampleFile) => {
     setLoading(true);
     setError(null);
     try {
@@ -209,13 +223,22 @@ export function SwimDashboard({
         if (!r.ok) throw new Error("โหลดไฟล์ตัวอย่างไม่สำเร็จ");
         return r.text();
       });
-      loadCsvText(text, sample.tag ?? sample.label);
+      loadCsvText(
+        text,
+        mode === "multi-event" ? sample.tag ?? sample.label : undefined
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "โหลดตัวอย่างไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadCsvText, mode]);
+
+  useEffect(() => {
+    if (samples.length > 0 && records.length === 0) {
+      loadSample(samples[0]);
+    }
+  }, [samples, records.length, loadSample]);
 
   const clearAll = () => {
     setRecords([]);
@@ -225,6 +248,17 @@ export function SwimDashboard({
     setSelectedAthletes([]);
     setSingleClub("All");
     setSheetUrl("");
+    setHoveredAthlete(null);
+    setLockedAthlete(null);
+  };
+
+  const handleLineFocus = (athlete: string) => {
+    setLockedAthlete((prev) => (prev === athlete ? null : athlete));
+    setHoveredAthlete(athlete);
+  };
+
+  const handleChartMouseLeave = () => {
+    if (!lockedAthlete) setHoveredAthlete(null);
   };
 
   return (
@@ -440,6 +474,10 @@ export function SwimDashboard({
             </Card>
 
             <Card title="นักกีฬา">
+              <p className="mb-2 text-xs text-slate-500">
+                เลือกนักกีฬาเพื่อแสดงบนกราฟ (แนะนำไม่เกิน {MAX_LEGEND_ATHLETES} คน) ·
+                คลิกชื่อเพื่อล็อกไฮไลท์
+              </p>
               <div className="mb-2 flex justify-end">
                 <button
                   type="button"
@@ -455,7 +493,18 @@ export function SwimDashboard({
               </div>
               <div className="max-h-48 space-y-1 overflow-y-auto">
                 {allAthletesInPool.map((athlete) => (
-                  <label key={athlete} className="flex items-center gap-2 text-sm">
+                  <label
+                    key={athlete}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-1 py-0.5 text-sm transition",
+                      focusAthlete === athlete && "bg-dps-cyan/10 font-semibold text-dps-navy",
+                      lockedAthlete === athlete && "ring-1 ring-dps-cyan/40"
+                    )}
+                    onMouseEnter={() => setHoveredAthlete(athlete)}
+                    onMouseLeave={() => {
+                      if (!lockedAthlete) setHoveredAthlete(null);
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedAthletes.includes(athlete)}
@@ -464,7 +513,11 @@ export function SwimDashboard({
                       }
                       className="rounded text-dps-cyan"
                     />
-                    <span className="truncate" title={athlete}>
+                    <span
+                      className="cursor-pointer truncate"
+                      title={athlete}
+                      onClick={() => handleLineFocus(athlete)}
+                    >
                       {athlete}
                     </span>
                   </label>
@@ -484,13 +537,27 @@ export function SwimDashboard({
             </div>
 
             <Card className="min-h-[420px]">
+              {lockedAthlete && (
+                <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-dps-cyan/30 bg-dps-cyan/5 px-3 py-2 text-sm">
+                  <span className="truncate font-semibold text-dps-navy">
+                    🔒 ล็อก: {lockedAthlete}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLockedAthlete(null)}
+                    className="shrink-0 text-xs text-dps-cyan hover:underline"
+                  >
+                    ปลดล็อก
+                  </button>
+                </div>
+              )}
               {chartData.length === 0 ? (
                 <div className="flex h-80 items-center justify-center text-slate-400">
                   เลือกนักกีฬาและตัวกรองเพื่อแสดงกราฟ
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} onMouseLeave={handleChartMouseLeave}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis
                       dataKey="distance"
@@ -502,23 +569,46 @@ export function SwimDashboard({
                         fontSize: 11,
                       }}
                     />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => v.toFixed(2)} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <YAxis
+                      type="number"
+                      domain={yAxis.domain}
+                      ticks={yAxis.ticks}
+                      allowDecimals={false}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip
+                      content={
+                        <ChartFocusTooltip
+                          focusAthlete={focusAthlete}
+                          valueLabel={chartMode === "pacing" ? "Pace" : "เวลา"}
+                        />
+                      }
+                    />
+                    {filteredRecords.length <= MAX_LEGEND_ATHLETES && (
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    )}
                     {filteredRecords.map((r, i) => {
-                      const highlighted =
-                        hoveredAthlete === null || hoveredAthlete === r.athlete;
+                      const isFocused = focusAthlete === r.athlete;
+                      const isDimmed = focusAthlete !== null && !isFocused;
                       return (
                         <Line
                           key={r.athlete}
                           type="monotone"
                           dataKey={r.athlete}
                           stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                          strokeWidth={hoveredAthlete === r.athlete ? 4 : 2}
-                          strokeOpacity={highlighted ? 1 : 0.12}
-                          dot={{ r: hoveredAthlete === r.athlete ? 5 : 3 }}
+                          strokeWidth={isFocused ? 4 : 2}
+                          strokeOpacity={isDimmed ? 0.1 : 1}
+                          dot={{
+                            r: isFocused ? 5 : 3,
+                            fillOpacity: isDimmed ? 0.1 : 1,
+                          }}
+                          activeDot={{ r: 7 }}
+                          style={{ cursor: "pointer" }}
                           onMouseEnter={() => setHoveredAthlete(r.athlete)}
-                          onMouseLeave={() => setHoveredAthlete(null)}
+                          onMouseLeave={() => {
+                            if (!lockedAthlete) setHoveredAthlete(null);
+                          }}
+                          onClick={() => handleLineFocus(r.athlete)}
                         />
                       );
                     })}

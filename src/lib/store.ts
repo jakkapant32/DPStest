@@ -12,17 +12,22 @@ export interface DataStore {
 const STORE_PATH = path.join(process.cwd(), "data", "store.json");
 
 async function ensureStore(): Promise<DataStore> {
+  const initial: DataStore = {
+    events: mockEvents,
+    results: mockResults,
+    products: mockProducts,
+  };
+
   try {
     const raw = await fs.readFile(STORE_PATH, "utf-8");
     return JSON.parse(raw) as DataStore;
   } catch {
-    const initial: DataStore = {
-      events: mockEvents,
-      results: mockResults,
-      products: mockProducts,
-    };
-    await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
-    await fs.writeFile(STORE_PATH, JSON.stringify(initial, null, 2), "utf-8");
+    try {
+      await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
+      await fs.writeFile(STORE_PATH, JSON.stringify(initial, null, 2), "utf-8");
+    } catch {
+      // Read-only env (e.g. Vercel) — use seeded mock data in memory
+    }
     return initial;
   }
 }

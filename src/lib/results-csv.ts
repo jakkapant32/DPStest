@@ -102,32 +102,32 @@ export function sortResultRows(
 export function getRankStyle(rank: number) {
   if (rank === 1) {
     return {
-      row: "bg-[#FFFAF0] hover:bg-[#FEF3C7]",
-      name: "text-[#B45309]",
-      rank: "text-[#B45309]",
+      rowCellStyle: { backgroundColor: "#93C5FD" } as const,
+      rankTextStyle: { color: "#1E3A8A", fontWeight: 700 } as const,
       medal: 1 as const,
+      isPodium: true,
     };
   }
   if (rank === 2) {
     return {
-      row: "bg-[#F8FAFC] hover:bg-[#F1F5F9]",
-      name: "text-[#475569]",
-      rank: "text-[#475569]",
+      rowCellStyle: { backgroundColor: "#BFDBFE" } as const,
+      rankTextStyle: { color: "#1D4ED8", fontWeight: 600 } as const,
       medal: 2 as const,
+      isPodium: true,
     };
   }
   if (rank === 3) {
     return {
-      row: "bg-[#FFF5F0] hover:bg-[#FFEDD5]",
-      name: "text-[#C2410C]",
-      rank: "text-[#C2410C]",
+      rowCellStyle: { backgroundColor: "#DBEAFE" } as const,
+      rankTextStyle: { color: "#2563EB", fontWeight: 600 } as const,
       medal: 3 as const,
+      isPodium: true,
     };
   }
   return {
-    row: "bg-white hover:bg-slate-50",
-    name: "text-dps-navy",
-    rank: "text-slate-700",
+    rowCellStyle: undefined,
+    rankTextStyle: undefined,
     medal: null,
+    isPodium: false,
   };
 }

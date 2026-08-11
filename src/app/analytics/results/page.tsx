@@ -1,11 +1,5 @@
-import { getEvents, getResults } from "@/lib/store";
-import { ResultsClient } from "@/app/results/ResultsClient";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "รายงานผลการแข่งขัน",
-};
-
-export default async function AnalyticsResultsPage() {
-  const [events, results] = await Promise.all([getEvents(), getResults()]);
-  return <ResultsClient initialEvents={events} initialResults={results} />;
+export default function AnalyticsResultsRedirect() {
+  redirect("/results");
 }

@@ -7,6 +7,7 @@ export const siteConfig = {
   nav: [
     { href: "/events", label: "จัดการแข่งขัน", labelEn: "Events" },
     { href: "/analytics", label: "วิเคราะห์ข้อมูล", labelEn: "Analytics" },
+    { href: "/results", label: "รายงานผลการแข่งขัน", labelEn: "Results" },
     { href: "/agency", label: "เอเจนซี่นักกีฬา", labelEn: "Agency" },
     { href: "/education", label: "การศึกษา & ทุน", labelEn: "Education" },
     { href: "/media", label: "สื่อ & Portfolio", labelEn: "Media" },

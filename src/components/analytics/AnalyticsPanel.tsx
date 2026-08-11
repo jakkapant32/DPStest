@@ -17,11 +17,13 @@ import {
   CHART_COLORS,
   computeStats,
   fetchCSVFromUrl,
+  getChartYAxisConfig,
   getPaceData,
   parseCSVToRecords,
 } from "@/lib/analytics";
 import type { AnalyticsDataset, Gender, SwimRecord } from "@/lib/types";
-import { formatSwimTime } from "@/lib/utils";
+import { formatSwimTime, cn } from "@/lib/utils";
+import { ChartFocusTooltip } from "./ChartFocusTooltip";
 
 interface AnalyticsPanelProps {
   side: "left" | "right";
@@ -41,6 +43,9 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [chartMode, setChartMode] = useState<"pacing" | "cumulative">("pacing");
   const [hoveredAthlete, setHoveredAthlete] = useState<string | null>(null);
+  const [lockedAthlete, setLockedAthlete] = useState<string | null>(null);
+
+  const focusAthlete = lockedAthlete ?? hoveredAthlete;
 
   const allAgeGroups = useMemo(
     () => Array.from(new Set(records.map((r) => r.ageGroup).filter(Boolean))),
@@ -75,6 +80,10 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
   const activeAthletes = useMemo(
     () => filteredRecords.map((r) => r.athlete),
     [filteredRecords]
+  );
+  const yAxis = useMemo(
+    () => getChartYAxisConfig(chartData, activeAthletes),
+    [chartData, activeAthletes]
   );
 
   const handleFileUpload = useCallback(
@@ -131,6 +140,15 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
     setList(
       list.includes(item) ? list.filter((i) => i !== item) : [...list, item]
     );
+  };
+
+  const handleLineFocus = (athlete: string) => {
+    setLockedAthlete((prev) => (prev === athlete ? null : athlete));
+    setHoveredAthlete(athlete);
+  };
+
+  const handleChartMouseLeave = () => {
+    if (!lockedAthlete) setHoveredAthlete(null);
   };
 
   const sideLabel = side === "left" ? "รายการ 1 (ซ้าย)" : "รายการ 2 (ขวา)";
@@ -208,7 +226,18 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
           <Card title="นักกีฬา">
             <div className="max-h-40 space-y-1 overflow-y-auto">
               {allAthletes.map((athlete) => (
-                <label key={athlete} className="flex items-center gap-2 text-sm">
+                <label
+                  key={athlete}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-1 py-0.5 text-sm transition",
+                    focusAthlete === athlete && "bg-dps-cyan/10 font-semibold text-dps-navy",
+                    lockedAthlete === athlete && "ring-1 ring-dps-cyan/40"
+                  )}
+                  onMouseEnter={() => setHoveredAthlete(athlete)}
+                  onMouseLeave={() => {
+                    if (!lockedAthlete) setHoveredAthlete(null);
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={
@@ -226,7 +255,13 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                     }}
                     className="rounded border-slate-300 text-dps-cyan"
                   />
-                  <span className="truncate">{athlete}</span>
+                  <span
+                    className="cursor-pointer truncate"
+                    title={athlete}
+                    onClick={() => handleLineFocus(athlete)}
+                  >
+                    {athlete}
+                  </span>
                 </label>
               ))}
             </div>
@@ -298,13 +333,31 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
           <h3 className="mb-4 text-center font-semibold text-gray-900">
             {name} ({chartMode === "pacing" ? "Pacing" : "Cumulative"})
           </h3>
+          {lockedAthlete && (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-dps-cyan/30 bg-dps-cyan/5 px-3 py-2 text-sm">
+              <span className="truncate font-semibold text-dps-navy">
+                🔒 ล็อก: {lockedAthlete}
+              </span>
+              <button
+                type="button"
+                onClick={() => setLockedAthlete(null)}
+                className="shrink-0 text-xs text-dps-cyan hover:underline"
+              >
+                ปลดล็อก
+              </button>
+            </div>
+          )}
           {chartData.length === 0 ? (
             <div className="flex h-64 items-center justify-center text-gray-400">
               ไม่มีข้อมูล — นำเข้า CSV หรือเลือก filter
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <LineChart
+                data={chartData}
+                margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+                onMouseLeave={handleChartMouseLeave}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis
                   dataKey="distance"
@@ -312,7 +365,10 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                   tick={{ fontSize: 12 }}
                 />
                 <YAxis
-                  domain={["auto", "auto"]}
+                  type="number"
+                  domain={yAxis.domain}
+                  ticks={yAxis.ticks}
+                  allowDecimals={false}
                   label={{
                     value: chartMode === "pacing" ? "Pace (วินาที)" : "เวลารวม (วินาที)",
                     angle: -90,
@@ -322,28 +378,36 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip
-                  formatter={(value: number) => value.toFixed(2)}
-                  labelFormatter={(label) => `${label}m`}
+                  content={
+                    <ChartFocusTooltip
+                      focusAthlete={focusAthlete}
+                      valueLabel={chartMode === "pacing" ? "Pace" : "เวลา"}
+                    />
+                  }
                 />
                 <Legend />
                 {activeAthletes.map((athlete, i) => {
-                  const isHighlighted =
-                    hoveredAthlete === null || hoveredAthlete === athlete;
+                  const isFocused = focusAthlete === athlete;
+                  const isDimmed = focusAthlete !== null && !isFocused;
                   return (
                     <Line
                       key={athlete}
                       type="monotone"
                       dataKey={athlete}
                       stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                      strokeWidth={hoveredAthlete === athlete ? 4 : 2}
-                      strokeOpacity={isHighlighted ? 1 : 0.15}
+                      strokeWidth={isFocused ? 4 : 2}
+                      strokeOpacity={isDimmed ? 0.1 : 1}
                       dot={{
-                        r: hoveredAthlete === athlete ? 6 : 4,
-                        fillOpacity: isHighlighted ? 1 : 0.15,
+                        r: isFocused ? 5 : 3,
+                        fillOpacity: isDimmed ? 0.1 : 1,
                       }}
                       activeDot={{ r: 7 }}
+                      style={{ cursor: "pointer" }}
                       onMouseEnter={() => setHoveredAthlete(athlete)}
-                      onMouseLeave={() => setHoveredAthlete(null)}
+                      onMouseLeave={() => {
+                        if (!lockedAthlete) setHoveredAthlete(null);
+                      }}
+                      onClick={() => handleLineFocus(athlete)}
                     />
                   );
                 })}

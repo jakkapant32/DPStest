@@ -182,6 +182,18 @@ export function computeStats(records: SwimRecord[]) {
   return { count: records.length, bestTime, avgPace };
 }
 
+/** Sort age-group labels by first number so "9" comes before "10-11". */
+export function sortAgeGroups(groups: string[]): string[] {
+  return [...groups].sort((a, b) => {
+    const numA = parseInt(a.match(/\d+/)?.[0] ?? "", 10);
+    const numB = parseInt(b.match(/\d+/)?.[0] ?? "", 10);
+    if (Number.isFinite(numA) && Number.isFinite(numB) && numA !== numB) {
+      return numA - numB;
+    }
+    return a.localeCompare(b, "th");
+  });
+}
+
 const Y_AXIS_STEP = 5;
 
 /** Y-axis ticks every 5 units so pacing differences are easier to read. */

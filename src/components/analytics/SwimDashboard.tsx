@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LineChart,
   Line,
@@ -21,6 +21,7 @@ import {
   getChartYAxisConfig,
   getPaceData,
   parseCSVToRecords,
+  sortAgeGroups,
 } from "@/lib/analytics";
 import type { SwimRecord } from "@/lib/types";
 import { ChartFocusTooltip } from "./ChartFocusTooltip";
@@ -44,8 +45,11 @@ function toggleList(list: string[], item: string): string[] {
   return list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
 }
 
+/** If every item is selected → clear all; otherwise select all. */
 function toggleAll(list: string[], all: string[]): string[] {
-  return list.length === all.length ? [] : [...all];
+  if (all.length === 0) return [];
+  const allSelected = all.every((item) => list.includes(item));
+  return allSelected ? [] : [...all];
 }
 
 const DEFAULT_CHART_ATHLETES = 8;
@@ -75,6 +79,10 @@ export function SwimDashboard({
 
   const focusAthlete = lockedAthlete ?? hoveredAthlete;
 
+  const ageGroupsSeeded = useRef(false);
+  const clubsSeeded = useRef(false);
+  const athletesUserCleared = useRef(false);
+
   const hasData = records.length > 0;
 
   const allGenders = useMemo(() => {
@@ -88,7 +96,9 @@ export function SwimDashboard({
 
   const allAgeGroups = useMemo(
     () =>
-      Array.from(new Set(records.map((r) => r.ageGroup).filter(Boolean))).sort(),
+      sortAgeGroups(
+        Array.from(new Set(records.map((r) => r.ageGroup).filter(Boolean)))
+      ),
     [records]
   );
 
@@ -98,20 +108,20 @@ export function SwimDashboard({
   );
 
   useEffect(() => {
-    if (allAgeGroups.length && ageGroups.length === 0) {
-      setAgeGroups([...allAgeGroups]);
-    }
-  }, [allAgeGroups, ageGroups.length]);
+    if (!allAgeGroups.length || ageGroupsSeeded.current) return;
+    ageGroupsSeeded.current = true;
+    setAgeGroups([...allAgeGroups]);
+  }, [allAgeGroups]);
 
   useEffect(() => {
-    if (allClubs.length && clubs.length === 0) {
-      if (mode === "single-club") {
-        setSingleClub(allClubs[0] ?? "All");
-      } else {
-        setClubs([...allClubs]);
-      }
+    if (!allClubs.length || clubsSeeded.current) return;
+    clubsSeeded.current = true;
+    if (mode === "single-club") {
+      setSingleClub(allClubs[0] ?? "All");
+    } else {
+      setClubs([...allClubs]);
     }
-  }, [allClubs, clubs.length, mode]);
+  }, [allClubs, mode]);
 
   const poolRecords = useMemo(() => {
     return records.filter((r) => {
@@ -119,11 +129,14 @@ export function SwimDashboard({
         const g = r.gender === "male" ? "M" : "F";
         if (g !== genderFilter && genderFilter !== r.gender) return false;
       }
-      if (ageGroups.length > 0 && !ageGroups.includes(r.ageGroup)) return false;
+      // Empty selection = none (after seed). Before seed, ageGroups is [] briefly.
+      if (ageGroupsSeeded.current) {
+        if (!ageGroups.includes(r.ageGroup)) return false;
+      }
       if (mode === "single-club") {
         if (singleClub !== "All" && r.club !== singleClub) return false;
-      } else if (clubs.length > 0 && !clubs.includes(r.club)) {
-        return false;
+      } else if (clubsSeeded.current) {
+        if (!clubs.includes(r.club)) return false;
       }
       return true;
     });
@@ -135,10 +148,23 @@ export function SwimDashboard({
   );
 
   useEffect(() => {
-    if (allAthletesInPool.length && selectedAthletes.length === 0) {
-      setSelectedAthletes(allAthletesInPool.slice(0, DEFAULT_CHART_ATHLETES));
-    }
-  }, [allAthletesInPool, selectedAthletes.length]);
+    if (!allAthletesInPool.length) return;
+    if (athletesUserCleared.current) return;
+
+    setSelectedAthletes((prev) => {
+      const valid = prev.filter((a) => allAthletesInPool.includes(a));
+      if (valid.length > 0) {
+        return valid.length === prev.length ? prev : valid;
+      }
+      return allAthletesInPool.slice(0, DEFAULT_CHART_ATHLETES);
+    });
+  }, [allAthletesInPool]);
+
+  const resetFilterSeeds = () => {
+    ageGroupsSeeded.current = false;
+    clubsSeeded.current = false;
+    athletesUserCleared.current = false;
+  };
 
   const filteredRecords = useMemo(() => {
     if (selectedAthletes.length === 0) return [];
@@ -170,6 +196,7 @@ export function SwimDashboard({
         setDatasetTags(tag ? [tag] : []);
         setHoveredAthlete(null);
         setLockedAthlete(null);
+        resetFilterSeeds();
       }
       setError(null);
     },
@@ -250,6 +277,30 @@ export function SwimDashboard({
     setSheetUrl("");
     setHoveredAthlete(null);
     setLockedAthlete(null);
+    resetFilterSeeds();
+  };
+
+  const refreshAthletesForFilters = () => {
+    athletesUserCleared.current = false;
+    setSelectedAthletes([]);
+  };
+
+  const handleAgeGroupsToggle = () => {
+    setAgeGroups((prev) => toggleAll(prev, allAgeGroups));
+    refreshAthletesForFilters();
+  };
+
+  const handleClubsToggle = () => {
+    setClubs((prev) => toggleAll(prev, allClubs));
+    refreshAthletesForFilters();
+  };
+
+  const handleAthletesToggle = () => {
+    setSelectedAthletes((prev) => {
+      const next = toggleAll(prev, allAthletesInPool);
+      athletesUserCleared.current = next.length === 0;
+      return next;
+    });
   };
 
   const handleLineFocus = (athlete: string) => {
@@ -365,7 +416,10 @@ export function SwimDashboard({
               <Card title="เพศ">
                 <select
                   value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value)}
+                  onChange={(e) => {
+                    setGenderFilter(e.target.value);
+                    refreshAthletesForFilters();
+                  }}
                   className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"
                 >
                   <option value="All">ทั้งหมด</option>
@@ -384,9 +438,7 @@ export function SwimDashboard({
                   <button
                     type="button"
                     className="text-xs text-dps-cyan hover:underline"
-                    onClick={() =>
-                      setAgeGroups(toggleAll(ageGroups, allAgeGroups))
-                    }
+                    onClick={handleAgeGroupsToggle}
                   >
                     สลับ
                   </button>
@@ -397,7 +449,10 @@ export function SwimDashboard({
                       <input
                         type="checkbox"
                         checked={ageGroups.includes(ag)}
-                        onChange={() => setAgeGroups(toggleList(ageGroups, ag))}
+                        onChange={() => {
+                          setAgeGroups(toggleList(ageGroups, ag));
+                          refreshAthletesForFilters();
+                        }}
                         className="rounded text-dps-cyan"
                       />
                       <span className="truncate">{ag}</span>
@@ -414,7 +469,7 @@ export function SwimDashboard({
                     value={singleClub}
                     onChange={(e) => {
                       setSingleClub(e.target.value);
-                      setSelectedAthletes([]);
+                      refreshAthletesForFilters();
                     }}
                     className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"
                   >
@@ -430,7 +485,7 @@ export function SwimDashboard({
                       <button
                         type="button"
                         className="text-xs text-dps-cyan hover:underline"
-                        onClick={() => setClubs(toggleAll(clubs, allClubs))}
+                        onClick={handleClubsToggle}
                       >
                         สลับ
                       </button>
@@ -443,7 +498,7 @@ export function SwimDashboard({
                             checked={clubs.includes(club)}
                             onChange={() => {
                               setClubs(toggleList(clubs, club));
-                              setSelectedAthletes([]);
+                              refreshAthletesForFilters();
                             }}
                             className="rounded text-dps-cyan"
                           />
@@ -475,18 +530,14 @@ export function SwimDashboard({
 
             <Card title="นักกีฬา">
               <p className="mb-2 text-xs text-slate-500">
-                เลือกนักกีฬาเพื่อแสดงบนกราฟ (แนะนำไม่เกิน {MAX_LEGEND_ATHLETES} คน) ·
-                คลิกชื่อเพื่อล็อกไฮไลท์
+                กราฟแสดงเฉพาะนักกีฬาที่ติ๊กด้านล่าง (แนะนำไม่เกิน {MAX_LEGEND_ATHLETES} คน) ·
+                เปลี่ยนเพศ/รุ่นอายุ/สโมสรจะเลือกนักกีฬาใหม่ให้อัตโนมัติ · คลิกชื่อเพื่อล็อกไฮไลท์
               </p>
               <div className="mb-2 flex justify-end">
                 <button
                   type="button"
                   className="text-xs text-dps-cyan hover:underline"
-                  onClick={() =>
-                    setSelectedAthletes(
-                      toggleAll(selectedAthletes, allAthletesInPool)
-                    )
-                  }
+                  onClick={handleAthletesToggle}
                 >
                   สลับ
                 </button>
@@ -509,7 +560,11 @@ export function SwimDashboard({
                       type="checkbox"
                       checked={selectedAthletes.includes(athlete)}
                       onChange={() =>
-                        setSelectedAthletes(toggleList(selectedAthletes, athlete))
+                        setSelectedAthletes((prev) => {
+                          const next = toggleList(prev, athlete);
+                          athletesUserCleared.current = next.length === 0;
+                          return next;
+                        })
                       }
                       className="rounded text-dps-cyan"
                     />

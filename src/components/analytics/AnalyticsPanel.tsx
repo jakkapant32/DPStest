@@ -20,6 +20,7 @@ import {
   getChartYAxisConfig,
   getPaceData,
   parseCSVToRecords,
+  sortAgeGroups,
 } from "@/lib/analytics";
 import type { AnalyticsDataset, Gender, SwimRecord } from "@/lib/types";
 import { formatSwimTime, cn } from "@/lib/utils";
@@ -48,7 +49,10 @@ export function AnalyticsPanel({ side, defaultDataset }: AnalyticsPanelProps) {
   const focusAthlete = lockedAthlete ?? hoveredAthlete;
 
   const allAgeGroups = useMemo(
-    () => Array.from(new Set(records.map((r) => r.ageGroup).filter(Boolean))),
+    () =>
+      sortAgeGroups(
+        Array.from(new Set(records.map((r) => r.ageGroup).filter(Boolean)))
+      ),
     [records]
   );
   const allClubs = useMemo(

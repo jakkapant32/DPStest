@@ -33,6 +33,12 @@ yarn-error.log*
 /data/video-jobs/
 /public/uploads/
 
+# local sample / screen-record videos (too large for git)
+*.mp4
+*.mov
+*.webm
+
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

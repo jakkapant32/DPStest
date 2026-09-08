@@ -4,6 +4,7 @@ import {
   Building2,
   Building,
   Layers,
+  Video,
 } from "lucide-react";
 
 export interface AnalyticsTool {
@@ -16,6 +17,15 @@ export interface AnalyticsTool {
 }
 
 export const analyticsTools: AnalyticsTool[] = [
+  {
+    href: "/analytics/video",
+    title: "Video Analysis",
+    tabLabel: "Video Analysis",
+    description:
+      "อัปโหลดคลิปแข่ง แท็กเวลาที่ถึงแต่ละระยะ (15m…Finish) แบบ Mako Vision — มือ + AI Suggest",
+    icon: Video,
+    sampleHint: "LCM 100 Free splits",
+  },
   {
     href: "/analytics/single-club",
     title: "วิเคราะห์ข้อมูล (ทีละ 1 สโมสร)",

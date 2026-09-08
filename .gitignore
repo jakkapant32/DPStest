@@ -29,6 +29,9 @@ yarn-error.log*
 
 # data store (persisted locally, seeded on first run)
 /data/store.json
+/data/video-sessions/
+/data/video-jobs/
+/public/uploads/
 
 # typescript
 *.tsbuildinfo

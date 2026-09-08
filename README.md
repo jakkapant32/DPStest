@@ -27,6 +27,7 @@ Open [http://localhost:3000](http://localhost:3000)
 | `/calendar` | ปฏิทินการแข่งขัน |
 | `/results` | ผลการแข่งขัน + filters |
 | `/analytics` | Swimming Dual Analytics (CSV + Google Sheets) |
+| `/analytics/video` | Video Analysis — tag distance splits (Mako-style) + AI Suggest |
 | `/shop` | ร้านค้า |
 | `/about` | เกี่ยวกับเรา |
 | `/admin` | Admin Dashboard (ต้อง login) |
@@ -60,8 +61,18 @@ Sample file: `public/sample-data.csv`
 3. Use `render.yaml` for Blueprint deploy
 4. Set `DATABASE_URL` from Render PostgreSQL
 
+## Video Analysis
+
+1. Open [/analytics/video](http://localhost:3000/analytics/video)
+2. Upload a race clip + athlete metadata (LCM/SCM, distance, lane)
+3. **Calibrate** — drag distance lines + lane band (amber) to match the pool; flip if start is on the right
+4. Press **Start** at the gun / dive, then **Q** to tag each distance (or **W** for stroke)
+5. **AI Suggest** — runs browser-side motion tracking first; falls back to Python worker if needed
+6. **Finish Session** — see finish time, stroke count/rate summary · **Export CSV**
+
 ## Roadmap
 
 - **Phase 1** ✅ Core platform (Calendar, Results, Analytics, Shop, About)
 - **Phase 1.5** Admin panel + DB integration + Payment
-- **Phase 2** Video upload + AI stroke analysis (Python worker)
+- **Phase 2** ✅ Video Analysis (manual tagging + AI distance suggestions via Python worker)
+- **Phase 2.5** Stroke count / stroke rate + multi-athlete auto track

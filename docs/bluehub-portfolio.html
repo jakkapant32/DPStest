@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ผลงานการวิเคราะห์และออกแบบระบบงานธุรกิจดิจิทัล — BlueHub / DPS</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Leelawadee UI", "Leelawadee", Tahoma, sans-serif;
+      font-size: 11pt;
+      line-height: 1.55;
+      color: #0f172a;
+      margin: 0;
+    }
+    h1 {
+      font-size: 18pt;
+      color: #0a192f;
+      margin: 0 0 6px;
+      border-bottom: 3px solid #06b6d4;
+      padding-bottom: 8px;
+    }
+    h2 {
+      font-size: 13pt;
+      color: #1e3a8a;
+      margin: 22px 0 8px;
+      page-break-after: avoid;
+    }
+    h3 { font-size: 11.5pt; color: #0f172a; margin: 12px 0 6px; }
+    p { margin: 0 0 8px; }
+    ul, ol { margin: 0 0 10px; padding-left: 22px; }
+    li { margin-bottom: 3px; }
+    .subtitle { color: #475569; margin-bottom: 18px; }
+    .meta {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 14px;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #0a192f; color: #fff; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .box {
+      border-left: 4px solid #06b6d4;
+      background: #f8fafc;
+      padding: 8px 12px;
+      margin: 8px 0 12px;
+    }
+    .wire {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 8.5pt;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      white-space: pre;
+      overflow: hidden;
+      line-height: 1.35;
+    }
+    .footer {
+      margin-top: 28px;
+      padding-top: 10px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 9pt;
+      color: #64748b;
+    }
+    .section { page-break-inside: avoid; }
+  </style>
+</head>
+<body>
+
+  <h1>ผลงานการวิเคราะห์และออกแบบระบบงานธุรกิจดิจิทัล</h1>
+  <p class="subtitle"><strong>ระบบ:</strong> BlueHub / DPS (Distance Per Stroke) — แพลตฟอร์มว่ายน้ำครบวงจร</p>
+
+  <div class="meta">
+    <strong>ขอบเขตเอกสาร:</strong> รวม 12 หัวข้อตามข้อกำหนดการส่งผลงาน<br />
+    <strong>เทคโนโลยีหลัก:</strong> Next.js 14, TypeScript, Tailwind, Recharts, Drizzle/PostgreSQL, Python OpenCV (Video AI)<br />
+    <strong>หน้าฟีเจอร์สำคัญ:</strong> /analytics · /analytics/video · /results · /admin
+  </div>
+
+  <!-- 1 -->
+  <div class="section">
+    <h2>1. ข้อมูลธุรกิจและปัญหาที่ต้องการแก้ไข</h2>
+    <p><strong>ธุรกิจ:</strong> DPS (Distance Per Stroke) เป็นเอเจนซี่และแพลตฟอร์มกีฬาว่ายน้ำครบวงจรในประเทศไทย ให้บริการจัดการแข่งขัน รายงานผลการแข่งขัน วิเคราะห์ข้อมูลประสิทธิภาพ (pacing / split / Distance Per Stroke) เอเจนซี่นักกีฬา ทุนการศึกษา สื่อ/พอร์ตโฟลิโอ และร้านค้าสปอร์ตแฟชั่น</p>
+    <p><strong>กลุ่มผู้ใช้:</strong> โค้ช, สโมสร, นักกีฬา, ผู้จัดแข่งขัน, ผู้ปกครอง, ผู้ดูแลระบบ (Admin)</p>
+    <h3>ปัญหาที่พบ</h3>
+    <ul>
+      <li>ข้อมูลผลการแข่งและ split กระจายใน Excel/CSV ไม่รวมศูนย์</li>
+      <li>การวิเคราะห์ pacing จากวิดีโอยังทำด้วยมือช้า เทียบกับเครื่องมืออย่าง Mako Vision</li>
+      <li>ไม่มีระบบเดียวที่เชื่อมปฏิทินแข่ง → รายงานผล → analytics → วิดีโอ</li>
+      <li>ยากต่อการเปรียบเทียบนักกีฬาข้ามสโมสรหรือข้ามรายการแข่งขัน</li>
+    </ul>
+    <div class="box"><strong>เป้าหมายระบบ BlueHub:</strong> เป็น Digital Hub ว่ายน้ำที่เปลี่ยนสถิติและคลิปแข่งให้เป็นข้อมูลตัดสินใจของโค้ชได้อย่างรวดเร็ว</div>
+  </div>
+
+  <!-- 2 -->
+  <div class="section">
+    <h2>2. Requirements Definition</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Requirement</th><th>ความสำคัญ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>R1</td><td>แสดงปฏิทินและสถานะการแข่งขัน</td><td>Must</td></tr>
+        <tr><td>R2</td><td>รายงานผลการแข่ง พร้อม filter และ split times</td><td>Must</td></tr>
+        <tr><td>R3</td><td>นำเข้า CSV / Google Sheets แล้ววิเคราะห์ pacing</td><td>Must</td></tr>
+        <tr><td>R4</td><td>เปรียบเทียบนักกีฬา ทีละสโมสร / หลายสโมสร / หลายรายการ</td><td>Must</td></tr>
+        <tr><td>R5</td><td>Video Analysis: แท็กเวลาที่ถึงแต่ละระยะ (15m…Finish)</td><td>Must</td></tr>
+        <tr><td>R6</td><td>AI Suggest ช่วยเสนอ timestamp จากคลิป</td><td>Should</td></tr>
+        <tr><td>R7</td><td>Export splits เป็น CSV เข้า Analytics</td><td>Must</td></tr>
+        <tr><td>R8</td><td>Admin จัดการ events / results / products</td><td>Must</td></tr>
+        <tr><td>R9</td><td>ร้านค้าแสดงสินค้า (Phase 1 ติดต่อ Line)</td><td>Could</td></tr>
+        <tr><td>R10</td><td>หน้าบริการเอเจนซี่ / ทุนการศึกษา / สื่อ</td><td>Should</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 3 -->
+  <div class="section">
+    <h2>3. Structured Requirements</h2>
+    <h3>Functional Requirements</h3>
+    <ul>
+      <li>FR-01 อัปโหลด/นำเข้าข้อมูลผลการว่ายน้ำ</li>
+      <li>FR-02 กรองตามเพศ, รุ่นอายุ, สโมสร, นักกีฬา</li>
+      <li>FR-03 แสดงกราฟ Pacing / Cumulative (Recharts)</li>
+      <li>FR-04 สร้าง Video Session + แท็กระยะด้วยมือ (ปุ่ม Q) และ AI</li>
+      <li>FR-05 คำนวณ split และ cumulative จากจุด Start ของการแข่ง</li>
+      <li>FR-06 Login Admin + CRUD ข้อมูลหลัก</li>
+    </ul>
+    <h3>Non-Functional Requirements</h3>
+    <ul>
+      <li>NFR-01 ใช้งานบนเว็บผ่านเบราว์เซอร์ (Responsive)</li>
+      <li>NFR-02 รองรับวิดีโออัปโหลดสูงสุดประมาณ 200MB (MVP)</li>
+      <li>NFR-03 แยก AI worker (Python) ออกจากเว็บ เพื่อไม่บล็อก UI</li>
+      <li>NFR-04 เก็บรหัสผ่าน Admin ผ่าน environment variables / cookie session</li>
+      <li>NFR-05 UI ใช้ธีมแบรนด์ DPS (น้ำเงิน–ฟ้า)</li>
+    </ul>
+    <p><strong>Actors:</strong> Coach, Athlete (ดูผล), Admin, System (AI Worker)</p>
+  </div>
+
+  <!-- 4 -->
+  <div class="section">
+    <h2>4. ER-Diagram</h2>
+    <p>ความสัมพันธ์หลักของข้อมูลในระบบ:</p>
+    <ul>
+      <li><strong>CLUBS</strong> 1—N <strong>ATHLETES</strong></li>
+      <li><strong>EVENTS</strong> 1—N <strong>RESULTS</strong></li>
+      <li><strong>ATHLETES</strong> 1—N <strong>RESULTS</strong></li>
+      <li><strong>ATHLETES</strong> 1—N <strong>VIDEO_SESSIONS</strong></li>
+      <li><strong>VIDEO_SESSIONS</strong> 1—N <strong>DISTANCE_MARKERS</strong></li>
+      <li><strong>VIDEO_SESSIONS</strong> 1—N <strong>CALIBRATION_LINES</strong></li>
+      <li>ตารางสนับสนุน: <strong>PRODUCTS</strong>, <strong>ANALYTICS_SESSIONS</strong></li>
+    </ul>
+    <table>
+      <thead><tr><th>Entity</th><th>Attribute สำคัญ</th></tr></thead>
+      <tbody>
+        <tr><td>CLUBS</td><td>id (PK), name</td></tr>
+        <tr><td>ATHLETES</td><td>id, name, gender, age_group, club_id (FK)</td></tr>
+        <tr><td>EVENTS</td><td>id, name, date_start, date_end, venue, city, status</td></tr>
+        <tr><td>RESULTS</td><td>id, event_id, athlete_id, athlete_name, rank, time, splits (JSONB)</td></tr>
+        <tr><td>VIDEO_SESSIONS</td><td>id, athlete_name, lane, pool_type, race_distance, race_start_sec, video_path, status</td></tr>
+        <tr><td>DISTANCE_MARKERS</td><td>id, session_id, distance_m, video_time_sec, source</td></tr>
+        <tr><td>PRODUCTS</td><td>id, name, price, image_url, category, in_stock</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 5 -->
+  <div class="section">
+    <h2>5. Database Schema Design</h2>
+    <p>ออกแบบด้วย Drizzle ORM บน PostgreSQL (ไฟล์ <code>src/db/schema.ts</code>) ส่วน Video Analysis ใน MVP เก็บเป็นไฟล์ JSON ที่ <code>data/video-sessions/</code> และวิดีโอที่ <code>public/uploads/video/</code> โดยมีแผนขยายเป็นตารางจริง</p>
+    <table>
+      <thead><tr><th>ตาราง</th><th>คอลัมน์หลัก</th></tr></thead>
+      <tbody>
+        <tr><td>events</td><td>id, name, date_start, date_end, venue, city, status</td></tr>
+        <tr><td>clubs</td><td>id, name</td></tr>
+        <tr><td>athletes</td><td>id, name, gender, age_group, club_id</td></tr>
+        <tr><td>results</td><td>id, event_id, category, athlete_id, athlete_name, rank, time, splits</td></tr>
+        <tr><td>products</td><td>id, name, description, price, image_url, category, in_stock</td></tr>
+        <tr><td>analytics_sessions</td><td>id, name, config, data, created_at</td></tr>
+        <tr><td>video_sessions (แผนขยาย)</td><td>id, athlete_name, lane, pool_type, race_distance, race_start_sec, video_url, status</td></tr>
+        <tr><td>distance_markers (แผนขยาย)</td><td>id, session_id, distance_m, video_time_sec, source</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 6 -->
+  <div class="section">
+    <h2>6. Wireframe / UI Prototype</h2>
+    <p><strong>โครงสร้างหน้าหลัก:</strong> Home (Hero DPS + บริการ) · Analytics Hub · Results · Calendar · Shop · Admin · Video Analysis</p>
+    <p><strong>Wireframe หน้า Video Analysis (สไตล์ Mako Vision):</strong></p>
+    <div class="wire">+--------------------------------------------------+
+| Nav: Events | Analytics | Results | Shop | ...   |
++---------------------------+----------------------+
+| [ Video player ]          | Athlete / LCM 100    |
+|  Play  A/D  S   time      | Progress 7/11        |
+|                           | [ Start · กด Q ]     |
+| Hotkeys: Space A/D S Q    | FIRST 50M            |
+| [AI Suggest] [Export CSV] | [15][25][35][45][50] |
+| [Finish Session]          | 50–100M — ACTIVE     |
+|                           | [65][75 NEXT][85]…   |
++---------------------------+----------------------+</div>
+    <p>ต้นแบบจริง: รัน <code>npm run dev</code> แล้วเปิด <code>/analytics/video</code></p>
+  </div>
+
+  <!-- 7 -->
+  <div class="section">
+    <h2>7. Dashboard / Output Design</h2>
+    <table>
+      <thead><tr><th>Output</th><th>ผู้ใช้</th><th>รายละเอียด</th></tr></thead>
+      <tbody>
+        <tr><td>กราฟ Pacing / Cumulative</td><td>โค้ช</td><td>เปรียบเทียบนักกีฬา side-by-side</td></tr>
+        <tr><td>ตาราง Results + Split</td><td>ผู้จัด / โค้ช</td><td>filter + ไฮไลท์แถวเมื่อชี้เมาส์</td></tr>
+        <tr><td>Video split cards</td><td>โค้ช</td><td>แสดง +split และ cumulative ต่อระยะ</td></tr>
+        <tr><td>Export CSV</td><td>โค้ช / นักวิเคราะห์</td><td>นำเข้า SwimDashboard ได้</td></tr>
+        <tr><td>Admin dashboard</td><td>Admin</td><td>จัดการ events / results / products</td></tr>
+      </tbody>
+    </table>
+    <div class="box"><strong>ตัวอย่าง Output Video:</strong> 15m → +5.40 (cum 5.40) · 25m → +5.xx · … · Finish → total time</div>
+  </div>
+
+  <!-- 8 -->
+  <div class="section">
+    <h2>8. ตารางเปรียบเทียบและการเลือกใช้เครื่องมือ</h2>
+    <table>
+      <thead>
+        <tr><th>เครื่องมือ</th><th>บทบาท</th><th>เหตุผลที่เลือก</th><th>ทางเลือกที่ตัด</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Next.js 14 + TypeScript</td><td>Web app + API</td><td>Full-stack, SSR, deploy Render ง่าย</td><td>Laravel / Go แยก FE</td></tr>
+        <tr><td>Tailwind CSS</td><td>UI</td><td>พัฒนาเร็ว คุมธีม DPS ได้</td><td>Bootstrap</td></tr>
+        <tr><td>Recharts</td><td>กราฟ Analytics</td><td>เข้ากับ React ได้ดี</td><td>Chart.js</td></tr>
+        <tr><td>Drizzle + PostgreSQL</td><td>ฐานข้อมูล</td><td>Type-safe schema</td><td>Prisma / MongoDB</td></tr>
+        <tr><td>PapaParse</td><td>แปลง CSV</td><td>เบา ใช้กับ Sheets ได้</td><td>ExcelJS</td></tr>
+        <tr><td>Python + OpenCV</td><td>AI วิดีโอ</td><td>ecosystem CV ดี แยก worker</td><td>รัน AI ใน Next.js</td></tr>
+        <tr><td>Render.com</td><td>Deploy</td><td>Blueprint + Postgres</td><td>Vercel อย่างเดียว</td></tr>
+      </tbody>
+    </table>
+    <p><strong>สรุป:</strong> ใช้ Next.js เป็นแกนเว็บ/API และ Python เป็น worker วิเคราะห์วิดีโอ — ไม่รวมงาน AI หนักไว้ใน serverless ของ Next.js</p>
+  </div>
+
+  <!-- 9 -->
+  <div class="section">
+    <h2>9. เกณฑ์การประเมินระบบ</h2>
+    <table>
+      <thead><tr><th>เกณฑ์</th><th>ตัวชี้วัด</th><th>เป้าหมาย MVP</th></tr></thead>
+      <tbody>
+        <tr><td>ความถูกต้องของ split</td><td>เทียบแท็กมือกับนาฬิกาแข่ง</td><td>คลาดเคลื่อน ≤ 0.3 วินาที (มือ)</td></tr>
+        <tr><td>AI Suggest</td><td>% marker ที่โค้ชยอมรับ</td><td>≥ 50% ในคลิปมุมข้างชัด</td></tr>
+        <tr><td>ใช้งานง่าย</td><td>เวลาแท็กครบ 100m</td><td>≤ 10 นาที/คลิป (มือ)</td></tr>
+        <tr><td>ประสิทธิภาพ</td><td>โหลดหน้า Analytics</td><td>&lt; 3 วินาที (ข้อมูลตัวอย่าง)</td></tr>
+        <tr><td>ความเสถียร</td><td>อัปโหลดวิดีโอสำเร็จ</td><td>≥ 95% เมื่อไฟล์ ≤ 200MB</td></tr>
+        <tr><td>ความปลอดภัย</td><td>Admin ต้องมีรหัสผ่าน</td><td>ผ่าน middleware</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 10 -->
+  <div class="section">
+    <h2>10. Data Privacy &amp; Governance Plan</h2>
+    <table>
+      <thead><tr><th>ประเด็น</th><th>แนวทาง</th></tr></thead>
+      <tbody>
+        <tr><td>ข้อมูลส่วนบุคคล</td><td>ชื่อนักกีฬา สโมสร คลิปแข่ง — เก็บเท่าที่จำเป็นต่อเซสชันวิเคราะห์</td></tr>
+        <tr><td>การยินยอม</td><td>โค้ช/สโมสรรับผิดชอบสิทธิ์คลิปก่อนอัปโหลด</td></tr>
+        <tr><td>การเข้าถึง</td><td>แยก Admin จากผู้ใช้ทั่วไป รหัสผ่านผ่าน env</td></tr>
+        <tr><td>การเก็บวิดีโอ</td><td>เก็บในเซิร์ฟเวอร์โปรเจกต์ ไม่ส่งออกนอก worker โดยไม่จำเป็น</td></tr>
+        <tr><td>Retention</td><td>ลบเซสชัน/ไฟล์เมื่อเสร็จงาน หรือครบกำหนด (เช่น 90 วัน)</td></tr>
+        <tr><td>Prompt / AI</td><td>ไม่ใส่ข้อมูลอ่อนไหวเกินจำเป็นใน log ของ job</td></tr>
+        <tr><td>Compliance</td><td>แนวทาง พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล (PDPA)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 11 -->
+  <div class="section">
+    <h2>11. การแบ่งบทบาทและการทำงานเป็นทีม</h2>
+    <p><em>(ปรับชื่อสมาชิกจริงก่อนส่งอาจารย์)</em></p>
+    <table>
+      <thead><tr><th>บทบาท</th><th>หน้าที่หลัก</th><th>ผลงานที่เกี่ยวข้อง</th></tr></thead>
+      <tbody>
+        <tr><td>Product / Business Analyst</td><td>บรีฟลูกค้า DPS, requirements, เกณฑ์ประเมิน</td><td>ข้อ 1–3, 9</td></tr>
+        <tr><td>System Analyst / Designer</td><td>ER, schema, wireframe, privacy</td><td>ข้อ 4–7, 10</td></tr>
+        <tr><td>Frontend Developer</td><td>หน้า Home, Analytics, VideoWorkspace</td><td>UI / Dashboard</td></tr>
+        <tr><td>Backend Developer</td><td>API, store, Admin, export CSV</td><td>ข้อ 5, 12</td></tr>
+        <tr><td>AI / Data</td><td>Python worker, calibration, AI Suggest</td><td>Video Analysis</td></tr>
+        <tr><td>QA / Docs</td><td>ทดสอบ flow, README, รวมพอร์ตโฟลิโอ</td><td>ข้อ 8–12</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 12 -->
+  <div class="section">
+    <h2>12. สรุปแนวทางการพัฒนาระบบ</h2>
+    <p><strong>แนวทาง:</strong> พัฒนาแบบ Incremental / Phased</p>
+    <ol>
+      <li><strong>Phase 1</strong> — Core platform: ปฏิทิน, ผลแข่ง, Analytics CSV, Shop, About</li>
+      <li><strong>Phase 1.5</strong> — Admin + ฐานข้อมูลจริง + Payment</li>
+      <li><strong>Phase 2</strong> — Video Analysis (แท็กมือ + AI Suggest) มีหน้าใช้งานแล้วที่ <code>/analytics/video</code></li>
+      <li><strong>Phase 2.5</strong> — Stroke count/rate, หลายลู่พร้อมกัน, deploy GPU</li>
+    </ol>
+    <div class="box">
+      <strong>หลักการออกแบบ:</strong> Hybrid human-in-the-loop (โค้ชแก้แท็กได้เสมอ) · แยก AI worker · Export เข้า Analytics เดิม · ยึดแบรนด์ DPS<br />
+      <strong>ผลลัพธ์ที่คาดหวัง:</strong> ลดเวลาวิเคราะห์คลิปของโค้ช และทำให้ข้อมูลระยะ×เวลานำไปวางแผนซ้อมได้จริง
+    </div>
+  </div>
+
+  <div class="footer">
+    เอกสารนี้จัดทำสำหรับส่งผลงานการวิเคราะห์และออกแบบระบบงานธุรกิจดิจิทัล — โปรเจกต์ BlueHub / DPS<br />
+    สร้างจากข้อมูลระบบจริงใน repository BlueHub
+  </div>
+
+</body>
+</html>

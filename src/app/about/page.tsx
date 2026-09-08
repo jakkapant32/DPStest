@@ -77,13 +77,24 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="flex gap-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dps-cyan/20 text-sm font-bold text-dps-navy">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-700">
               2
             </span>
             <div>
               <p className="font-medium text-slate-800">Phase 2 — Video Analysis</p>
               <p className="text-sm text-slate-500">
-                อัพโหลดคลิปว่ายน้ำ → วิเคราะห์ stroke และ pacing อัตโนมัติ
+                อัปโหลดคลิป → แท็กระยะ×เวลา (Mako-style) + AI Suggest — ดูที่ /analytics/video
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dps-cyan/20 text-sm font-bold text-dps-navy">
+              2.5
+            </span>
+            <div>
+              <p className="font-medium text-slate-800">Phase 2.5 — Stroke metrics</p>
+              <p className="text-sm text-slate-500">
+                Stroke count / stroke rate และติดตามหลายลู่พร้อมกัน
               </p>
             </div>
           </div>

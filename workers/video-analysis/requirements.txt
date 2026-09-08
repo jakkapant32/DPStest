@@ -1,0 +1,4 @@
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+# Optional — improves tracking when installed:
+# mediapipe>=0.10.9

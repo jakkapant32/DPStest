@@ -22,7 +22,9 @@ import {
   formatSplitDisplay,
   nextUntaggedIndex,
   segmentGroups,
+  sessionToSwimRecord,
   summarizeSession,
+  swimRecordToCsv,
   taggedCount,
   timingsFromRaceStart,
   type CalibrationLine,
@@ -31,6 +33,16 @@ import {
   type VideoSession,
 } from "@/lib/video-analysis";
 import { analyzeVideoInBrowser } from "@/lib/video-client-ai";
+import {
+  applyLocalTagAction,
+  createLocalVideoSession,
+  isLocalSession,
+  listLocalSessionMeta,
+  loadLocalSession,
+  readResponseJsonSafe,
+  saveLocalSessionMeta,
+  shouldUseLocalUpload,
+} from "@/lib/video-local-session";
 import { VideoOverlay } from "@/components/analytics/VideoOverlay";
 import type { Gender, Stroke } from "@/lib/types";
 
@@ -46,15 +58,18 @@ interface SessionListItem {
   updatedAt: string;
   tagged: number;
   total: number;
+  localOnly?: boolean;
 }
 
 export function VideoWorkspace() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [sessions, setSessions] = useState<SessionListItem[]>([]);
   const [session, setSession] = useState<VideoSession | null>(null);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedIdx, setSpeedIdx] = useState(2);
@@ -76,14 +91,32 @@ export function VideoWorkspace() {
   const [file, setFile] = useState<File | null>(null);
 
   const loadList = useCallback(async () => {
-    const res = await fetch("/api/video/upload");
-    if (!res.ok) return;
-    const data = await res.json();
-    setSessions(data.sessions ?? []);
+    const local = listLocalSessionMeta();
+    try {
+      const res = await fetch("/api/video/upload");
+      if (res.ok) {
+        const data = await res.json();
+        const server = (data.sessions ?? []) as SessionListItem[];
+        const merged = [...local, ...server].sort((a, b) =>
+          b.updatedAt.localeCompare(a.updatedAt)
+        );
+        setSessions(merged);
+        return;
+      }
+    } catch {
+      // offline / vercel without FS
+    }
+    setSessions(local);
   }, []);
 
   useEffect(() => {
     void loadList();
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
   }, [loadList]);
 
   const timings = useMemo(
@@ -116,6 +149,15 @@ export function VideoWorkspace() {
   );
 
   const refreshSession = useCallback(async (id: string) => {
+    if (id.startsWith("vid-local-")) {
+      const local = loadLocalSession(id);
+      if (!local) throw new Error("ไม่พบเซสชันในเบราว์เซอร์ (blob อาจหมดอายุ — อัปโหลดใหม่)");
+      if (!local.videoUrl.startsWith("blob:")) {
+        throw new Error("เซสชันนี้ต้องเลือกไฟล์วิดีโอใหม่ เพราะเก็บแค่ metadata");
+      }
+      setSession(local);
+      return local;
+    }
     const res = await fetch(`/api/video/sessions/${id}`);
     if (!res.ok) throw new Error("Failed to load session");
     const data = await res.json();
@@ -126,6 +168,33 @@ export function VideoWorkspace() {
   const patchSession = useCallback(
     async (body: Record<string, unknown>) => {
       if (!session) return;
+      if (isLocalSession(session)) {
+        const updated: VideoSession = {
+          ...session,
+          ...body,
+          id: session.id,
+          markers: (body.markers as VideoSession["markers"]) ?? session.markers,
+          calibrationLines:
+            (body.calibrationLines as VideoSession["calibrationLines"]) ??
+            session.calibrationLines,
+          laneBand:
+            (body.laneBand as VideoSession["laneBand"]) ?? session.laneBand,
+          strokeMetrics:
+            (body.strokeMetrics as VideoSession["strokeMetrics"]) ??
+            session.strokeMetrics,
+          updatedAt: new Date().toISOString(),
+          localOnly: true,
+        };
+        if (typeof body.mirrored === "boolean") updated.mirrored = body.mirrored;
+        if (body.raceStartSec !== undefined) {
+          updated.raceStartSec =
+            body.raceStartSec === null ? null : Number(body.raceStartSec);
+        }
+        if (body.status) updated.status = body.status as VideoSession["status"];
+        saveLocalSessionMeta(updated);
+        setSession(updated);
+        return updated;
+      }
       const res = await fetch(`/api/video/sessions/${session.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -145,6 +214,11 @@ export function VideoWorkspace() {
       setBusy(true);
       setError(null);
       try {
+        if (isLocalSession(session)) {
+          const updated = applyLocalTagAction(session, body);
+          setSession(updated);
+          return;
+        }
         const res = await fetch(`/api/video/sessions/${session.id}/tags`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -266,8 +340,47 @@ export function VideoWorkspace() {
     }
     setUploading(true);
     setError(null);
+    setInfo(null);
     setFinished(false);
+
+    const startLocal = (reason?: string) => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+      const url = URL.createObjectURL(file);
+      blobUrlRef.current = url;
+      const local = createLocalVideoSession({
+        athleteName: athleteName || "Athlete",
+        club,
+        gender,
+        lane,
+        poolType,
+        raceDistance,
+        stroke,
+        videoFileName: file.name || "race.mp4",
+        videoUrl: url,
+      });
+      saveLocalSessionMeta(local);
+      setSession(local);
+      setFile(null);
+      setCalibrateMode(false);
+      setShowOverlay(true);
+      setInfo(
+        reason ||
+          "ใช้โหมดวิเคราะห์ในเบราว์เซอร์ (ไม่อัปโหลดไฟล์ขึ้นเซิร์ฟเวอร์) — เหมาะกับ Vercel และไฟล์ใหญ่"
+      );
+      void loadList();
+    };
+
     try {
+      // Vercel / large files → skip server upload entirely
+      if (shouldUseLocalUpload(file.size)) {
+        startLocal(
+          `ไฟล์ ${(file.size / (1024 * 1024)).toFixed(1)} MB — ใช้โหมดเบราว์เซอร์เพราะเกินขีดจำกัดอัปโหลดบน Vercel (~4.5MB)`
+        );
+        return;
+      }
+
       const form = new FormData();
       form.set("video", file);
       form.set("athleteName", athleteName || "Athlete");
@@ -278,15 +391,30 @@ export function VideoWorkspace() {
       form.set("stroke", stroke);
       form.set("gender", gender);
       const res = await fetch("/api/video/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      setSession(data.session);
+      const parsed = await readResponseJsonSafe(res);
+      if (!parsed.ok || parsed.data._nonJson) {
+        startLocal(String(parsed.data.error || "อัปโหลดไม่สำเร็จ — สลับโหมดเบราว์เซอร์"));
+        return;
+      }
+      if (!parsed.data.session) {
+        throw new Error(String(parsed.data.error || "Upload failed"));
+      }
+      setSession(parsed.data.session as unknown as VideoSession);
       setFile(null);
       setCalibrateMode(false);
       setShowOverlay(true);
       await loadList();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
+      // Last resort: still open locally so user can work
+      try {
+        startLocal(
+          e instanceof Error
+            ? `${e.message} — สลับโหมดเบราว์เซอร์แล้ว`
+            : "อัปโหลดล้มเหลว — สลับโหมดเบราว์เซอร์แล้ว"
+        );
+      } catch {
+        setError(e instanceof Error ? e.message : "Upload failed");
+      }
     } finally {
       setUploading(false);
     }
@@ -352,44 +480,63 @@ export function VideoWorkspace() {
       }
 
       if (result.suggestions.length === 0) {
-        const res = await fetch(`/api/video/sessions/${session.id}/analyze`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Analyze failed");
-        setSession(data.session);
-        for (let i = 0; i < 12; i++) {
-          await new Promise((r) => setTimeout(r, 2000));
-          const poll = await fetch(`/api/video/sessions/${session.id}/analyze`);
-          const pollData = await poll.json();
-          setSession(pollData.session);
-          if (pollData.result || pollData.session?.aiJob?.status === "done")
-            break;
-          if (pollData.session?.aiJob?.status === "error") break;
+        if (!isLocalSession(session)) {
+          try {
+            const res = await fetch(`/api/video/sessions/${session.id}/analyze`, {
+              method: "POST",
+            });
+            const data = await res.json();
+            if (res.ok) {
+              setSession(data.session);
+              for (let i = 0; i < 12; i++) {
+                await new Promise((r) => setTimeout(r, 2000));
+                const poll = await fetch(
+                  `/api/video/sessions/${session.id}/analyze`
+                );
+                const pollData = await poll.json();
+                setSession(pollData.session);
+                if (
+                  pollData.result ||
+                  pollData.session?.aiJob?.status === "done"
+                )
+                  break;
+                if (pollData.session?.aiJob?.status === "error") break;
+              }
+              await refreshSession(session.id);
+            }
+          } catch {
+            // ignore python fallback errors on local/vercel
+          }
         }
-        await refreshSession(session.id);
         setError(
           "ยังจับการเคลื่อนไหวได้น้อย — ปรับแถบส้มให้คลุมลู่นักกีฬา แล้วกด AI อีกครั้ง หรือแท็กมือด้วย Q"
         );
         return;
       }
 
-      const applyRes = await fetch(`/api/video/sessions/${session.id}/tags`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "applyAi",
-          suggestions: result.suggestions,
-          strokePeaksSec: result.strokePeaksSec,
-          onlyEmpty: true,
-          engine: "browser",
-          confidence: result.meanConfidence,
-          message: `จับการเคลื่อนไหวได้ ${result.suggestions.length} จุด · conf ${(result.meanConfidence * 100).toFixed(0)}% · samples ${result.samples}`,
-        }),
-      });
-      const applyData = await applyRes.json();
-      if (!applyRes.ok) throw new Error(applyData.error || "Apply AI failed");
-      setSession(applyData.session);
+      const applyBody = {
+        action: "applyAi",
+        suggestions: result.suggestions,
+        strokePeaksSec: result.strokePeaksSec,
+        onlyEmpty: true,
+        engine: "browser",
+        confidence: result.meanConfidence,
+        message: `จับการเคลื่อนไหวได้ ${result.suggestions.length} จุด · conf ${(result.meanConfidence * 100).toFixed(0)}% · samples ${result.samples}`,
+      };
+
+      if (isLocalSession(session)) {
+        const updated = applyLocalTagAction(workingSession, applyBody);
+        setSession(updated);
+      } else {
+        const applyRes = await fetch(`/api/video/sessions/${session.id}/tags`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(applyBody),
+        });
+        const applyData = await applyRes.json();
+        if (!applyRes.ok) throw new Error(applyData.error || "Apply AI failed");
+        setSession(applyData.session);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "AI failed");
     } finally {
@@ -402,7 +549,6 @@ export function VideoWorkspace() {
     if (!session) return;
     setBusy(true);
     try {
-      // Recompute stroke metrics with finish time
       const finishT =
         session.markers.find((m) => m.isFinish)?.videoTimeSec ?? null;
       const sm = computeStrokeMetrics(
@@ -415,14 +561,7 @@ export function VideoWorkspace() {
       if (session.strokeMetrics?.aiStrokeTimesSec) {
         sm.aiStrokeTimesSec = session.strokeMetrics.aiStrokeTimesSec;
       }
-      const res = await fetch(`/api/video/sessions/${session.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed", strokeMetrics: sm }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Finish failed");
-      setSession(data.session);
+      await patchSession({ status: "completed", strokeMetrics: sm });
       setFinished(true);
       await loadList();
     } catch (e) {
@@ -434,6 +573,30 @@ export function VideoWorkspace() {
 
   const exportCsv = () => {
     if (!session) return;
+    if (isLocalSession(session)) {
+      const timings = timingsFromRaceStart(
+        session.markers,
+        session.raceStartSec
+      );
+      const record = sessionToSwimRecord(
+        session,
+        session.raceStartSec,
+        timings
+      );
+      if (!record) {
+        setError("ต้องมี Start + Finish ก่อน Export CSV");
+        return;
+      }
+      const csv = swimRecordToCsv(record);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${session.athleteName.replace(/\s+/g, "_")}-${session.raceDistance}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
     window.open(
       `/api/video/sessions/${session.id}/export?format=csv`,
       "_blank"
@@ -451,7 +614,11 @@ export function VideoWorkspace() {
             สร้างเซสชัน Video Analysis
           </h2>
           <p className="mb-6 text-sm text-slate-500">
-            อัปโหลดคลิป → calibrate เส้นระยะ → Start → แท็กหรือ AI Suggest
+            เลือกคลิป → calibrate เส้นระยะ → Start → แท็กหรือ AI Suggest
+            <br />
+            <span className="text-xs text-slate-400">
+              บน Vercel ไฟล์ใหญ่จะวิเคราะห์ในเบราว์เซอร์โดยไม่อัปโหลดขึ้นเซิร์ฟเวอร์
+            </span>
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -544,6 +711,7 @@ export function VideoWorkspace() {
             </label>
           </div>
 
+          {info && <p className="mt-4 text-sm text-dps-navy">{info}</p>}
           {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
           <Button
@@ -801,6 +969,7 @@ export function VideoWorkspace() {
                 — {session.aiJob.message}
               </p>
             )}
+            {info && <p className="text-sm text-dps-navy">{info}</p>}
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             {(finished || session.status === "completed") && summary && (

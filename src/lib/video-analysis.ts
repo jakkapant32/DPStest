@@ -77,6 +77,8 @@ export interface VideoSession {
     confidence?: number;
   };
   error?: string;
+  /** True when video stays in the browser (blob URL) — required on Vercel for large files */
+  localOnly?: boolean;
 }
 
 export interface MarkerTiming {

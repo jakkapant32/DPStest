@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { findColumn, isBlankSwimTime, unwrapQuotedCsvRows } from "./csv-normalize";
 
 export interface ParsedResultRow {
   id: string;
@@ -15,24 +16,29 @@ export interface ParsedResultRow {
 export function timeToSec(str: string | undefined | null): number | null {
   if (!str || typeof str !== "string") return null;
   const s = str.trim();
-  if (s === "" || s === "-") return null;
+  if (isBlankSwimTime(s)) return null;
   const parts = s.split(":");
-  return parts.length === 2
-    ? parseInt(parts[0], 10) * 60 + parseFloat(parts[1])
-    : parseFloat(parts[0]);
+  const value =
+    parts.length === 2
+      ? parseInt(parts[0], 10) * 60 + parseFloat(parts[1])
+      : parseFloat(parts[0]);
+  return Number.isFinite(value) ? value : null;
 }
 
 export function parseResultsCSV(csvText: string): {
   rows: ParsedResultRow[];
   distances: string[];
 } {
-  const parsed = Papa.parse<Record<string, string>>(csvText, {
+  const parsed = Papa.parse<Record<string, string>>(unwrapQuotedCsvRows(csvText), {
     header: true,
     skipEmptyLines: true,
   });
 
-  if (parsed.errors.length > 0) {
-    throw new Error(parsed.errors[0]?.message ?? "CSV parse error");
+  const blocking = parsed.errors.filter(
+    (e) => e.type === "Quotes" || e.code === "UndetectableDelimiter"
+  );
+  if (blocking.length > 0 && parsed.data.length === 0) {
+    throw new Error(blocking[0]?.message ?? "CSV parse error");
   }
 
   const data = parsed.data;
@@ -48,32 +54,42 @@ export function parseResultsCSV(csvText: string): {
   }
 
   const finalDistance = distances[distances.length - 1];
-  const nameKey = cols.find(
-    (k) => k.includes("ชื่อ") || k.toLowerCase().includes("name")
+  const nameKey = findColumn(
+    cols,
+    (k) => k.includes("ชื่อ") || k.includes("name") || k.includes("athlete")
   );
-  const genderKey = cols.find(
-    (k) => k.toLowerCase() === "gender" || k === "เพศ"
+  const genderKey = findColumn(cols, (k) => k === "gender" || k === "เพศ");
+  const clubKey = findColumn(cols, (k) => k === "สโมสร" || k === "club");
+  const rankKey = findColumn(cols, (k) => k.includes("อันดับ") || k === "rank");
+  const ageKey = findColumn(
+    cols,
+    (k) => k === "age" || k === "รุ่นอายุ" || k === "age_group" || k === "agegroup"
   );
-  const clubKey = cols.find(
-    (k) => k.toLowerCase() === "สโมสร" || k.toLowerCase() === "club"
-  );
-  const rankKey = cols.find(
-    (k) => k.includes("อันดับ") || k.toLowerCase() === "rank"
+  const officialTimeKey = findColumn(
+    cols,
+    (k) => k === "time" || k === "เวลา" || k === "total_time" || k === "total"
   );
 
   const rows: ParsedResultRow[] = data.map((row, index) => {
     const splits: Record<string, string> = {};
     distances.forEach((d) => {
-      splits[d] = row[d]?.trim() || "-";
+      const cell = row[d]?.trim() || "";
+      splits[d] = isBlankSwimTime(cell) ? "-" : cell;
     });
 
-    const finalTimeStr = row[finalDistance]?.trim() || "-";
+    const official = officialTimeKey ? row[officialTimeKey]?.trim() : "";
+    const fromSplit = finalDistance ? row[finalDistance]?.trim() : "";
+    const finalTimeStr = !isBlankSwimTime(official)
+      ? official
+      : !isBlankSwimTime(fromSplit)
+        ? fromSplit
+        : "-";
 
     return {
       id: `csv-${index}`,
       name: (nameKey && row[nameKey]?.trim()) || "Unknown",
       gender: (genderKey && row[genderKey]?.trim()) || "-",
-      ageGroup: row["รุ่นอายุ"]?.trim() || row["Age"]?.trim() || "-",
+      ageGroup: (ageKey && row[ageKey]?.trim()) || "-",
       club: (clubKey && row[clubKey]?.trim()) || "-",
       rankOrig: (rankKey && row[rankKey]?.trim()) || "",
       finalTimeStr,

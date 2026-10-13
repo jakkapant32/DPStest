@@ -11,7 +11,7 @@ export default function SingleClubAnalyticsPage() {
       mode="single-club"
       title="Swimming Data Analytics"
       description="เลือกสโมสรทีละรายการเพื่อเปรียบเทียบนักกีฬา — รองรับ CSV และ Google Sheets"
-      samples={[SAMPLE_FILES.fr200]}
+      samples={[SAMPLE_FILES.fr200, SAMPLE_FILES.arena2026]}
     />
   );
 }

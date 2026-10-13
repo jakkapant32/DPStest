@@ -1,16 +1,18 @@
 import Papa from "papaparse";
+import { findColumn, isBlankSwimTime, unwrapQuotedCsvRows } from "./csv-normalize";
 import type { Gender, SwimRecord } from "./types";
 
 export function timeToSeconds(timeStr: string | undefined | null): number | null {
   if (!timeStr || typeof timeStr !== "string") return null;
   const str = timeStr.trim();
-  if (str === "" || str === "-") return null;
+  if (isBlankSwimTime(str)) return null;
   const parts = str.split(":");
   if (parts.length === 2) {
-    return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+    const value = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+    return Number.isFinite(value) ? value : null;
   }
   const n = parseFloat(str);
-  return Number.isNaN(n) ? null : n;
+  return Number.isFinite(n) ? n : null;
 }
 
 function parseGender(raw: string | undefined): Gender {
@@ -23,13 +25,16 @@ export function parseCSVToRecords(
   csvText: string,
   options?: { tag?: string }
 ): SwimRecord[] {
-  const parsed = Papa.parse<Record<string, string>>(csvText, {
+  const parsed = Papa.parse<Record<string, string>>(unwrapQuotedCsvRows(csvText), {
     header: true,
     skipEmptyLines: true,
   });
 
-  if (parsed.errors.length > 0) {
-    throw new Error(parsed.errors[0]?.message ?? "CSV parse error");
+  const blocking = parsed.errors.filter(
+    (e) => e.type === "Quotes" || e.code === "UndetectableDelimiter"
+  );
+  if (blocking.length > 0 && parsed.data.length === 0) {
+    throw new Error(blocking[0]?.message ?? "CSV parse error");
   }
 
   const cols = Object.keys(parsed.data[0] ?? {});
@@ -37,14 +42,19 @@ export function parseCSVToRecords(
     .filter((c) => c.trim().match(/^\d+m$/i))
     .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
-  const nameKey = cols.find(
-    (k) => k.includes("ชื่อ") || k.toLowerCase().includes("name")
+  const nameKey = findColumn(
+    cols,
+    (k) => k.includes("ชื่อ") || k.includes("name") || k.includes("athlete")
   );
-  const genderKey = cols.find(
-    (k) => k.toLowerCase() === "gender" || k === "เพศ"
+  const genderKey = findColumn(cols, (k) => k === "gender" || k === "เพศ");
+  const clubKey = findColumn(cols, (k) => k === "สโมสร" || k === "club");
+  const ageKey = findColumn(
+    cols,
+    (k) => k === "age" || k === "รุ่นอายุ" || k === "age_group" || k === "agegroup"
   );
-  const clubKey = cols.find(
-    (k) => k.toLowerCase() === "สโมสร" || k.toLowerCase() === "club"
+  const officialTimeKey = findColumn(
+    cols,
+    (k) => k === "time" || k === "เวลา" || k === "total_time" || k === "total"
   );
 
   return parsed.data
@@ -89,17 +99,23 @@ export function parseCSVToRecords(
       const lastDist = distKeys[distKeys.length - 1];
       const totalFromSplits = lastDist ? splits[String(lastDist)] : null;
       const totalParsed = timeToSeconds(
-        row.total_time ?? row["total"] ?? row["time"] ?? row["เวลา"]
+        (officialTimeKey && row[officialTimeKey]) ||
+          row.total_time ||
+          row["total"] ||
+          row["Time"] ||
+          row["เวลา"]
       );
-      const totalTime = totalFromSplits ?? totalParsed ?? 0;
+      const totalTime = totalParsed ?? totalFromSplits ?? 0;
+      if (distKeys.length === 0 && totalTime <= 0) return null;
 
       return {
         athlete,
         gender: parseGender(genderKey ? row[genderKey] : row.gender),
         ageGroup:
+          (ageKey && row[ageKey]?.trim()) ||
           row["รุ่นอายุ"]?.trim() ||
           row.age_group?.trim() ||
-          row.ageGroup?.trim() ||
+          row.Age?.trim() ||
           "",
         club: (clubKey && row[clubKey]?.trim()) || row.club?.trim() || row["สโมสร"]?.trim() || "",
         stroke: row.stroke ?? row["ท่า"] ?? "freestyle",
@@ -250,9 +266,18 @@ export const SAMPLE_FILES = {
     label: "1500M หญิง (ตัวอย่าง)",
     path: "/sample-data/1500M-F-v2.csv",
   },
+  arena2026: {
+    label: "Arena Open 2026",
+    path: "/sample-data/arena-open-2026.csv",
+  },
 } as const;
 
 export const RESULTS_SAMPLE = {
   label: "ผลการแข่งขัน (ตัวอย่าง)",
   path: "/sample-data/results-sample.csv",
+} as const;
+
+export const ARENA_RESULTS_SAMPLE = {
+  label: "Arena Open 2026",
+  path: "/sample-data/arena-open-2026.csv",
 } as const;

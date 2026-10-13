@@ -23,7 +23,8 @@ export default function AnalyticsHubPage() {
       <div className="mb-8 rounded-xl border border-dps-cyan/20 bg-dps-cyan/5 p-4 text-center text-sm text-slate-600">
         ไฟล์ตัวอย่าง:{" "}
         <span className="font-medium text-dps-navy">{SAMPLE_FILES.fr200.label}</span>,{" "}
-        <span className="font-medium text-dps-navy">{SAMPLE_FILES.m1500.label}</span>
+        <span className="font-medium text-dps-navy">{SAMPLE_FILES.m1500.label}</span>,{" "}
+        <span className="font-medium text-dps-navy">{SAMPLE_FILES.arena2026.label}</span>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

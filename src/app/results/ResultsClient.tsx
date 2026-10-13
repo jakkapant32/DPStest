@@ -5,7 +5,7 @@ import { ChevronDown, Loader2, Upload } from "lucide-react";
 import { Card, Button, SectionHeader } from "@/components/ui/Card";
 import { MedalIcon } from "@/components/ui/MedalIcon";
 import { cn } from "@/lib/utils";
-import { fetchCSVFromUrl, RESULTS_SAMPLE } from "@/lib/analytics";
+import { ARENA_RESULTS_SAMPLE, fetchCSVFromUrl, RESULTS_SAMPLE } from "@/lib/analytics";
 import {
   getRankStyle,
   parseResultsCSV,
@@ -109,19 +109,26 @@ export function ResultsClient({
     setError(null);
   }, []);
 
+  const loadSampleFile = useCallback(
+    async (path: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error("โหลดไฟล์ตัวอย่างไม่สำเร็จ");
+        loadCsv(await res.text());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "โหลดตัวอย่างไม่สำเร็จ");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadCsv]
+  );
+
   const loadSample = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(RESULTS_SAMPLE.path);
-      if (!res.ok) throw new Error("โหลดไฟล์ตัวอย่างไม่สำเร็จ");
-      loadCsv(await res.text());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "โหลดตัวอย่างไม่สำเร็จ");
-    } finally {
-      setLoading(false);
-    }
-  }, [loadCsv]);
+    await loadSampleFile(RESULTS_SAMPLE.path);
+  }, [loadSampleFile]);
 
   const didAutoLoadSample = useRef(false);
 
@@ -214,6 +221,14 @@ export function ResultsClient({
             className="rounded-full bg-dps-navy/10 px-4 py-1.5 text-sm font-medium text-dps-navy transition hover:bg-dps-navy hover:text-white disabled:opacity-50"
           >
             {loading ? "กำลังโหลด..." : `โหลด ${RESULTS_SAMPLE.label}`}
+          </button>
+          <button
+            type="button"
+            onClick={() => void loadSampleFile(ARENA_RESULTS_SAMPLE.path)}
+            disabled={loading}
+            className="rounded-full bg-dps-cyan/15 px-4 py-1.5 text-sm font-medium text-dps-navy transition hover:bg-dps-cyan hover:text-white disabled:opacity-50"
+          >
+            {loading ? "กำลังโหลด..." : `โหลด ${ARENA_RESULTS_SAMPLE.label}`}
           </button>
         </div>
 

@@ -11,7 +11,7 @@ export default function MultiClubAnalyticsPage() {
       mode="multi-club"
       title="Swimming Data Analytics — Multi-Club"
       description="เลือกได้มากกว่า 1 สโมสร — ชี้เมาส์ที่เส้นกราฟเพื่อไฮไลท์"
-      samples={[SAMPLE_FILES.fr200]}
+      samples={[SAMPLE_FILES.fr200, SAMPLE_FILES.arena2026]}
     />
   );
 }

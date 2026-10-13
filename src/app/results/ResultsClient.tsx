@@ -2,14 +2,31 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { ChevronDown, Loader2, Upload } from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Card, Button, SectionHeader } from "@/components/ui/Card";
 import { MedalIcon } from "@/components/ui/MedalIcon";
 import { cn } from "@/lib/utils";
-import { ARENA_RESULTS_SAMPLE, fetchCSVFromUrl, RESULTS_SAMPLE } from "@/lib/analytics";
 import {
+  ARENA_RESULTS_SAMPLE,
+  CHART_COLORS,
+  fetchCSVFromUrl,
+  RESULTS_SAMPLE,
+} from "@/lib/analytics";
+import {
+  genderLabel,
   getRankStyle,
   parseResultsCSV,
   sortResultRows,
+  timeToSec,
   type ParsedResultRow,
 } from "@/lib/results-csv";
 import type { RaceResult, SwimEvent } from "@/lib/types";
@@ -57,6 +74,8 @@ export function ResultsClient({
   const [genderFilter, setGenderFilter] = useState("All");
   const [ageFilter, setAgeFilter] = useState("All");
   const [clubFilter, setClubFilter] = useState("All");
+  const [view, setView] = useState<"table" | "chart">("table");
+  const [chartMode, setChartMode] = useState<"cumulative" | "pacing">("cumulative");
 
   const mockRows = useMemo(() => {
     const eventResults = initialResults.filter((r) => r.eventId === selectedEvent);
@@ -80,24 +99,55 @@ export function ResultsClient({
       if (clubFilter !== "All" && r.club !== clubFilter) return false;
       return true;
     });
-    return sortResultRows(rows, ageFilter);
+    return sortResultRows(rows);
   }, [sourceRows, genderFilter, ageFilter, clubFilter]);
 
   const rankedRows = useMemo(() => {
-    let currentAgeGroup = "";
+    let currentGroup = "";
     let calculatedRank = 0;
     return filtered.map((row) => {
-      if (row.ageGroup !== currentAgeGroup) {
-        currentAgeGroup = row.ageGroup;
+      const group = `${genderLabel(row.gender)}|${row.ageGroup}`;
+      if (group !== currentGroup) {
+        currentGroup = group;
         calculatedRank = 1;
       } else {
         calculatedRank++;
       }
-      const parsed = parseInt(row.rankOrig, 10);
-      const rank = !Number.isNaN(parsed) ? parsed : calculatedRank;
-      return { row, rank };
+      return { row, rank: calculatedRank, group };
     });
   }, [filtered]);
+
+  const chartSeries = useMemo(() => {
+    return rankedRows
+      .filter((item) => item.row.finalTimeSec !== null)
+      .slice(0, 12)
+      .map((item, index) => ({
+        key: `${item.row.name} · ${genderLabel(item.row.gender)} ${item.row.ageGroup}`,
+        row: item.row,
+        color: CHART_COLORS[index % CHART_COLORS.length],
+      }));
+  }, [rankedRows]);
+
+  const chartData = useMemo(() => {
+    return distances.map((distance, index) => {
+      const point: Record<string, number | string> = {
+        distance: parseInt(distance, 10),
+      };
+      for (const series of chartSeries) {
+        const current = timeToSec(series.row.splits[distance]);
+        if (current === null) continue;
+        if (chartMode === "pacing") {
+          const prev =
+            index === 0 ? 0 : timeToSec(series.row.splits[distances[index - 1] ?? ""]);
+          if (prev === null) continue;
+          point[series.key] = Number((current - prev).toFixed(2));
+        } else {
+          point[series.key] = Number(current.toFixed(2));
+        }
+      }
+      return point;
+    });
+  }, [chartMode, chartSeries, distances]);
 
   const loadCsv = useCallback((text: string) => {
     const { rows, distances: d } = parseResultsCSV(text);
@@ -259,9 +309,9 @@ export function ResultsClient({
               onChange={(e) => setGenderFilter(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-dps-cyan focus:outline-none focus:ring-2 focus:ring-dps-cyan/20"
             >
-              <option value="All">ทั้งหมด</option>
+              <option value="All">ทั้งหมด (แยกอันดับชาย/หญิง)</option>
               {filterOptions.genders.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>{genderLabel(g)}</option>
               ))}
             </select>
           </div>
@@ -302,11 +352,100 @@ export function ResultsClient({
             ← กลับไปใช้ข้อมูลตัวอย่างจากระบบ
           </button>
         )}
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-sm font-medium",
+              view === "table"
+                ? "bg-dps-navy text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            )}
+          >
+            ตาราง
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("chart")}
+            className={cn(
+              "rounded-full px-4 py-1.5 text-sm font-medium",
+              view === "chart"
+                ? "bg-dps-navy text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            )}
+          >
+            กราฟ
+          </button>
+          <span className="text-xs text-slate-400">
+            อันดับแยกตามเพศและรุ่นอายุ
+          </span>
+        </div>
       </Card>
 
       {rankedRows.length === 0 ? (
         <Card className="py-16 text-center text-slate-400">
           ไม่พบผลการแข่งขันที่ตรงกับตัวกรอง
+        </Card>
+      ) : view === "chart" ? (
+        <Card>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-dps-navy">กราฟ Split</h3>
+              <p className="text-xs text-slate-500">
+                แสดง {chartSeries.length} คนที่เร็วที่สุดในตัวกรองปัจจุบัน แยกเส้นตามนักกีฬา
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setChartMode("cumulative")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium",
+                  chartMode === "cumulative"
+                    ? "bg-dps-cyan text-dps-navy"
+                    : "bg-slate-100 text-slate-600"
+                )}
+              >
+                Cumulative
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMode("pacing")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium",
+                  chartMode === "pacing"
+                    ? "bg-dps-cyan text-dps-navy"
+                    : "bg-slate-100 text-slate-600"
+                )}
+              >
+                Pacing
+              </button>
+            </div>
+          </div>
+          <div className="h-[420px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="distance" unit="m" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                {chartSeries.map((series) => (
+                  <Line
+                    key={series.key}
+                    type="monotone"
+                    dataKey={series.key}
+                    stroke={series.color}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">
@@ -327,14 +466,30 @@ export function ResultsClient({
                 className="group/table"
                 onMouseLeave={() => setHoveredId(null)}
               >
-                {rankedRows.map(({ row, rank }) => {
+                {rankedRows.map(({ row, rank }, index) => {
                   const style = getRankStyle(rank);
+                  const section = `${genderLabel(row.gender)} · รุ่น ${row.ageGroup}`;
+                  const prev = index > 0 ? rankedRows[index - 1] : null;
+                  const showSection =
+                    !prev ||
+                    genderLabel(prev.row.gender) !== genderLabel(row.gender) ||
+                    prev.row.ageGroup !== row.ageGroup;
                   const isExpanded = expandedId === row.id;
                   const isHovered = hoveredId === row.id;
                   const isDimmed = hoveredId !== null && !isHovered;
 
                   return (
                     <Fragment key={row.id}>
+                      {showSection && (
+                        <tr className="bg-slate-100">
+                          <td
+                            colSpan={7}
+                            className="px-6 py-2 text-xs font-bold uppercase tracking-wide text-dps-navy"
+                          >
+                            {section}
+                          </td>
+                        </tr>
+                      )}
                       <tr
                         key={row.id}
                         className={cn(
@@ -370,7 +525,7 @@ export function ResultsClient({
                           style={style.rowCellStyle}
                           className="hidden px-6 py-4 text-slate-500 md:table-cell"
                         >
-                          {row.gender}
+                          {genderLabel(row.gender)}
                         </td>
                         <td
                           style={style.rowCellStyle}

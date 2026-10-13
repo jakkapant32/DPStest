@@ -101,13 +101,34 @@ export function parseResultsCSV(csvText: string): {
   return { rows, distances };
 }
 
-export function sortResultRows(
-  rows: ParsedResultRow[],
-  filterAge: string
-): ParsedResultRow[] {
+export function genderLabel(gender: string): string {
+  const g = gender.trim().toLowerCase();
+  if (g === "f" || g === "female" || g === "หญิง" || g.startsWith("หญ")) return "หญิง";
+  if (g === "m" || g === "male" || g === "ชาย" || g.startsWith("ช")) return "ชาย";
+  return gender || "-";
+}
+
+function genderSortKey(gender: string): number {
+  const label = genderLabel(gender);
+  if (label === "หญิง") return 0;
+  if (label === "ชาย") return 1;
+  return 2;
+}
+
+function ageSortKey(ageGroup: string): number {
+  const n = parseInt(ageGroup, 10);
+  return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+}
+
+/** Group women and men separately, then by age, then by finish time. */
+export function sortResultRows(rows: ParsedResultRow[]): ParsedResultRow[] {
   return [...rows].sort((a, b) => {
-    if (filterAge === "All" && a.ageGroup !== b.ageGroup) {
-      return a.ageGroup.localeCompare(b.ageGroup);
+    const byGender = genderSortKey(a.gender) - genderSortKey(b.gender);
+    if (byGender !== 0) return byGender;
+    const byAge = ageSortKey(a.ageGroup) - ageSortKey(b.ageGroup);
+    if (byAge !== 0) return byAge;
+    if (a.ageGroup !== b.ageGroup) {
+      return a.ageGroup.localeCompare(b.ageGroup, "th");
     }
     if (a.finalTimeSec === null) return 1;
     if (b.finalTimeSec === null) return -1;
